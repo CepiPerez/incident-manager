@@ -1,5 +1,8 @@
 .htaccess.bak
-baradur/storage/app/*
-baradur/storage/framework/*
+baradur/storage/app/public/*
+baradur/storage/framework/cache/*
+baradur/storage/framework/config/*
+baradur/storage/framework/routes/*
+baradur/storage/framework/views/*
 mysql/
 redis/
