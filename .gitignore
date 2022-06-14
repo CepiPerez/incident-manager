@@ -1,0 +1,5 @@
+.htaccess.bak
+baradur/storage/app/*
+baradur/storage/framework/*
+mysql/
+redis/
