@@ -1,0 +1,106 @@
+[32mProcessing jobs from the [default] queue. [m
+[32mTo run queue in backgroun use this command:[m
+  nohup php artisan queue:work --daemon &
+
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Processing message
+Sending mail through smtp.
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+[32mProcessing jobs from the [default] queue. [m
+[32mTo run queue in backgroun use this command:[m
+  nohup php artisan queue:work&
+
+Processing message
+Sending mail through smtp.
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+[32mProcessing jobs from the [default] queue. [m
+[32mTo run queue in backgroun use this command:[m
+  nohup php artisan queue:work&
+
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+[33mQueue already running with PID 10600
+10602. [m
+[33mQueue already running with PID 10611
+10613. [m
+[32mProcessing jobs from the [default] queue. [m
+[32mTo run queue in backgroun use this command:[m
+  nohup php artisan queue:work &
+
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty
+Queue is empty

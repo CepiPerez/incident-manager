@@ -1,0 +1,20 @@
+SELECT assets index.php info.php public FROM WHERE = 2503 AND = 1275
+SELECT incidentes.*, pr.pid, pr.pdesc, grupos.descripcion as grupo_desc FROM  LEFT JOIN grupos ON . = . LEFT JOIN (SELECT id as pid, descripcion as pdesc, minimo, maximo from prioridades) as   ON incidentes.prioridad BETWEEN minimo AND maximo WHERE .uid=33(www-data) gid=33(www-data) groups=33(www-data) = '1275'  LIMIT 1
+SELECT * FROM  WHERE  IN ('7') AND deleted_at IS NULL 
+SELECT * FROM  WHERE  IN ('19') 
+SELECT * FROM  WHERE  IN ('10') 
+SELECT avances.*, ta.descripcion as tipo_desc, ta.visible, gr.descripcion as grupo_desc FROM  LEFT JOIN tipo_avances AS ta ON . = . LEFT JOIN grupos AS gr ON . = . WHERE . IN ('1275') AND . < 101 ORDER BY fecha_ingreso ASC 
+SELECT * FROM  WHERE  = 1 AND deleted_at IS NULL ORDER BY descripcion ASC 
+SELECT .*, . as , . as  FROM  INNER JOIN area_cliente ON . = . WHERE  IN ('00006','00020','00021','00013','00024','00009','00022','00001','00007','00015','00018','00005','00023','00002','00003','00012','00025','00019') 
+SELECT * FROM  WHERE  IN ('00006','00020','00021','00013','00024','00009','00022','00001','00007','00015','00018','00005','00023','00002','00003','00012','00025','00019') ORDER BY nombre ASC 
+SELECT * FROM  ORDER BY descripcion ASC 
+SELECT * FROM  ORDER BY nombre ASC 
+SELECT * FROM  ORDER BY descripcion ASC 
+SELECT * FROM  ORDER BY descripcion ASC 
+SELECT .*, . as , . as  FROM  INNER JOIN grupo_user ON . = . WHERE  IN ('2','1') 
+SELECT * FROM  WHERE  IN (6,20) 
+SELECT * FROM  WHERE  = '1275' AND  = 0 
+SELECT * FROM  WHERE  = 2503 AND  = '1275' 
+SELECT * FROM  WHERE  = 2503 AND  = '1275' 
+SELECT * FROM  WHERE  = 2503 AND  = '1275' 
+SELECT * FROM  WHERE  = 2503 AND  = '1275' 
