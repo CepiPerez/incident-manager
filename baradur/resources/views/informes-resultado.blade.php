@@ -7,7 +7,7 @@
 
     <div class="row mr-0">
         <h3 class="col-sm pt-2">Informe de incidentes</h3>
-        @if (count($data)>0)
+        @if ($data->count()>0)
         <div class="col-sm botonera pr-0">
           <a href="{{ route('informes.descargar') }}" class="col-auto btn btn-plain success btn-sm ml-2 mt-3 mb-1">
             <i class="ri-download-cloud-line mr-1" style="vertical-align:middle;"></i>
@@ -39,7 +39,7 @@
 
     </div>
 
-    @if (count($data)>0)
+    @if ($data->count()>0)
     <table class="table ticketera">
         <thead>
           <tr>
@@ -56,7 +56,7 @@
           @foreach ($data as $inc)
           <tr>
             <td>{{str_pad($inc->id, 7, '0', STR_PAD_LEFT)}}</td>
-            <td class="d-none d-xl-table-cell">{{$inc->fecha_ingreso}}</td>
+            <td class="d-none d-xl-table-cell">{{$inc->fecha_ingreso->format('d-m-Y')}}</td>
             @if (!$filtros['cliente'])
             <td class="d-none d-lg-table-cell">{{$inc->inc_cliente->descripcion}}</td>
             @endif

@@ -9,9 +9,9 @@ class AsignacionesController extends Controller
 
         $reglas = Asignacion::selectRaw('asignaciones.*, grupos.descripcion as grupo_nombre, 
 			usuarios.nombre as usuario_nombre')
-            ->leftJoin('grupos', 'codigo', '=', 'grupo')
-            ->leftJoin('usuarios', 'Usuario', '=', 'usuario')
-            ->orderBy('descripcion')->get();
+            ->leftJoin('grupos', 'grupos.codigo', '=', 'asignaciones.grupo')
+            ->leftJoin('usuarios', 'usuarios.Usuario', '=', 'asignaciones.usuario')
+            ->orderBy('descripcion')->paginate(20);
     
         return view('admin.asignaciones', compact('reglas'));
     }

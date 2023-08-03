@@ -95,7 +95,7 @@ class FileStore implements Store
     {
         $this->ensureCacheDirectoryExists($path = $this->path($key));
 
-        $file = new LockableFile($path, 'c+');
+        $file = new LockableFile($path, 'a+');
 
         try {
             $file->getExclusiveLock();
@@ -109,7 +109,8 @@ class FileStore implements Store
 
         if (empty($expire) || time() >= $expire)
         {
-            $file->truncate()->write($this->expiration($seconds).serialize($value))
+            $file->truncate()
+                ->write($this->expiration($seconds).serialize($value))
                 ->close();
 
             $this->ensurePermissionsAreCorrect($path);
@@ -166,14 +167,16 @@ class FileStore implements Store
      * @param  mixed  $value
      * @return int
      */
-    /* public function increment($key, $value = 1)
+    public function increment($key, $value = 1)
     {
         $raw = $this->getPayload($key);
 
-        return tap(((int) $raw['data']) + $value, function ($newValue) use ($key, $raw) {
-            $this->put($key, $newValue, $raw['time'] ?? 0);
-        });
-    } */
+        $times = $raw['data']? (int)$raw['data'] + 1 : 1;
+
+        $this->put($key, $times, 60);
+
+        return $times;
+    }
 
     /**
      * Decrement the value of an item in the cache.
@@ -323,7 +326,7 @@ class FileStore implements Store
     /**
      * Get the Filesystem instance.
      *
-     * @return \Illuminate\Filesystem\Filesystem
+     * @return Filesystem
      */
     public function getFilesystem()
     {
@@ -372,7 +375,6 @@ class FileStore implements Store
         else
         {
             list($class, $method, $params) = getCallbackFromString($callback);
-            array_shift($params);
             $value = call_user_func_array(array($class, $method), $params);
             $this->put($key, $value, $seconds);
             return $value;

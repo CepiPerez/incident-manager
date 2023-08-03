@@ -7,7 +7,8 @@ class Grupo extends Model
     protected $primaryKey = 'codigo';
 
     protected $fillable = [
-        'descripcion'
+        'descripcion',
+        'email'
     ];
 
     public function miembros()

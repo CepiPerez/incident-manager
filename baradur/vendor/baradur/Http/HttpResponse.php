@@ -19,7 +19,9 @@ class HttpResponse
     private $status_code = 200;
     private $reason_phrase = '';
     private $protocol_version = '1.1';
-    
+
+    public $error_code, $error_string;
+
     public static $reason_phrases = array(
         100 => 'Continue',
         101 => 'Switching Protocols',
@@ -60,6 +62,7 @@ class HttpResponse
         416 => 'Requested range not satisfiable',
         417 => 'Expectation Failed',
         418 => 'I\'m a teapot',
+        419 => 'Page Expired',
         422 => 'Unprocessable Entity',
         423 => 'Locked',
         424 => 'Failed Dependency',
@@ -115,7 +118,7 @@ class HttpResponse
      * Return an instance with the specified HTTP protocol version
      * 
      * @param string $version
-     * @return CurlResponse
+     * @return HttpResponse
      */
     public function withProtocolVersion($version) {
         if ($version === $this->protocol_version) {
@@ -164,7 +167,7 @@ class HttpResponse
      * @return string
      */
     public function getHeaderLine($name) {
-        return implode(', ', $this->getHeader($name));
+        return $this->getHeader($name);
     }
     
     /**
@@ -172,7 +175,7 @@ class HttpResponse
      * 
      * @param string $name
      * @param string|array $value
-     * @return CurlResponse
+     * @return HttpResponse
      */
     public function withHeader($name, $value) {
         $normalized_name = strtolower($name);
@@ -194,7 +197,7 @@ class HttpResponse
      * 
      * @param string $name
      * @param string|array $value
-     * @return CurlResponse
+     * @return HttpResponse
      */
     public function withAddedHeader($name, $value) {
         $normalized_name = strtolower($name);
@@ -215,7 +218,7 @@ class HttpResponse
      * Return an instance without the specified header
      * 
      * @param string $name
-     * @return CurlResponse
+     * @return HttpResponse
      */
     public function withoutHeader($name) {
         $normalized_name = strtolower($name);
@@ -237,12 +240,16 @@ class HttpResponse
     public function getBody() {
         return $this->body;
     }
+
+    public function setBody($body) {
+        $this->body = $body;
+    }
     
     /**
      * Return an instance with specified response body
      * 
      * @param string $body
-     * @return CurlResponse
+     * @return HttpResponse
      */
     public function withBody($body) {
         $new = clone $this;
@@ -250,6 +257,10 @@ class HttpResponse
         return $new;
     }
     
+
+    public function setStatusCode($code) {
+        $this->status_code = $code;
+    }
     /**
      * Get response status code
      * 
@@ -273,7 +284,7 @@ class HttpResponse
      * 
      * @param int $status_code
      * @param string $reason_phrase
-     * @return CurlResponse
+     * @return HttpResponse
      */
     public function withStatus($status_code, $reason_phrase = '') {
         $new = clone $this;
@@ -304,13 +315,18 @@ class HttpResponse
                 
                 $key_name = strtolower($key);
                 if (isset($this->header_names[$key_name])) {
-                    $this->headers[$key] = array_merge($this->headers[$key], array($value));
+                    $this->headers[$key] = array_merge($this->headers[$key], $value);
                 } else {
-                    $this->headers[$key] = array($value);
+                    $this->headers[$key] = $value;
                     $this->header_names[$key_name] = $key;
                 }
             }
         }
+    }
+
+    public function setHeader($key, $value)
+    {
+        $this->headers[$key] = $value;
     }
     
     /**

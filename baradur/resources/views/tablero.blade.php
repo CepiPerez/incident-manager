@@ -21,55 +21,71 @@
     <hr class="mb-3 mt-0">
     
    
-    @if ($contador->total>0)
-      <div class="m-0 contador big title mb-3" onclick="abrirEnlace('{{ route('dashboard', 'registrados') }}')">
-        <div class="value">{{$contador->total}}</div>
-        <div class="text">@if ($contador->sin_asignar==1) incidente @else incidentes @endif registrados</div>
-      </div>
+    @if (($contador->total + $backlog) > 0)
+        <div class="m-0 contador big title @if ($backlog==0) mb-3 @endif" 
+          onclick="abrirEnlace('{{ route('dashboard', 'registrados') }}')">
+          <div class="value">{{$contador->total + $backlog}}</div>
+          <div class="text">@if ($contador->sin_asignar==1) Incidente registrado @else Incidentes registrados @endif</div>
+        </div>
+        @if ($backlog>0)
+          <div class="m-0 mb-3 contador small" onclick="abrirEnlace('{{ route('dashboard', 'backlog') }}')">
+            @if ($backlog==1)
+            <div class="text">1 se encuentra en backlog (no se contabiliza)</div>
+            @else
+            <div class="text">{{$backlog}} se encuentran en backlog (no se contabilizan)</div>
+            @endif
+          </div>
+        @endif
 
       <div style="width:100%; height: 1rem;
         display: grid; margin-bottom: .5rem;
         grid-template-columns: {{$contador->sin_asignar}}fr {{$contador->en_progreso}}fr 
-        {{$contador->en_pausa}}fr {{$contador->resueltos}}fr 
+        {{$contador->en_pausa}}fr {{$contador->bloqueados}}fr {{$contador->resueltos}}fr 
         {{$contador->cerrados}}fr {{$contador->cancelados}}fr;
       ">
-        <div id="sin_asignar" style="background-color: var(--orange);"></div>
-        <div id="en_progreso" style="background-color: var(--yellow);"></div>
-        <div id="en_pausa" style="background-color: var(--teal);"></div>
-        <div id="resueltos" style="background-color: var(--green);"></div>
-        <div id="cerrados" style="background-color: var(--gray);"></div>
-        <div id="cancelados" style="background-color: lightgray;"></div>
+        <div id="sin_asignar" class="background-orange"></div>
+        <div id="en_progreso" class="background-yellow"></div>
+        <div id="en_pausa" class="background-teal"></div>
+        <div id="bloqueados" class="background-red"></div>
+        <div id="resueltos" class="background-green"></div>
+        <div id="cerrados" class="background-gray"></div>
+        <div id="cancelados" class="background-dimm"></div>
       </div>
 
       <div class="d-flex justify-content-start" style="gap:1rem;flex-wrap:wrap;">
         
         <div class="contador" onclick="abrirEnlace('{{ route('dashboard', 'sin_asignar') }}')">
-          <div class="value orange">{{$contador->sin_asignar}}</div>
+          <div class="value text-orange">{{$contador->sin_asignar}}</div>
           <div class="text">@if ($contador->sin_asignar==1) incidente @else incidentes @endif sin asignar</div>
         </div>
 
         <div class="contador" onclick="abrirEnlace('{{ route('dashboard', 'en_progreso') }}')">
-          <div class="value yellow">{{$contador->en_progreso}}</div>
+          <div class="value text-yellow">{{$contador->en_progreso}}</div>
           <div class="text">@if ($contador->en_progreso==1) incidente @else incidentes @endif en progreso</div>
         </div>
 
         <div class="contador" onclick="abrirEnlace('{{ route('dashboard', 'en_pausa') }}')">
-          <div class="value teal">{{$contador->en_pausa}}</div>
+          <div class="value text-teal">{{$contador->en_pausa}}</div>
           <div class="text">@if ($contador->en_pausa==1) incidente @else incidentes @endif en pausa</div>
         </div>
 
+        <div class="contador" onclick="abrirEnlace('{{ route('dashboard', 'bloqueados') }}')">
+          <div class="value text-red">{{$contador->bloqueados}}</div>
+          <div class="text">@if ($contador->bloqueados==1) incidente bloqueado @else incidentes bloqueados @endif</div>
+        </div>
+
         <div class="contador" onclick="abrirEnlace('{{ route('dashboard', 'resueltos') }}')">
-          <div class="value green">{{$contador->resueltos}}</div>
+          <div class="value text-green">{{$contador->resueltos}}</div>
           <div class="text">@if ($contador->resueltos==1) incidente resuelto @else incidentes resueltos @endif</div>
         </div>
 
         <div class="contador" onclick="abrirEnlace('{{ route('dashboard', 'cerrados') }}')">
-          <div class="value gray">{{$contador->cerrados}}</div>
+          <div class="value text-gray">{{$contador->cerrados}}</div>
           <div class="text">@if ($contador->cerrados==1) incidente cerrado @else incidentes cerrados @endif</div>
         </div>
 
         <div class="contador" onclick="abrirEnlace('{{ route('dashboard', 'cancelados') }}')">
-          <div class="value lightgray">{{$contador->cancelados}}</div>
+          <div class="value text-dimm">{{$contador->cancelados}}</div>
           <div class="text">@if ($contador->cancelados==1) incidente cancelado @else incidentes cancelados @endif</div>
         </div>
 
@@ -91,26 +107,26 @@
         grid-template-columns: {{$contador->en_tiempo}}fr {{$contador->a_vencer}}fr 
         {{$contador->vencidos}}fr;
       ">
-        <div id="en_tiempo" style="background-color: var(--green);"></div>
-        <div id="a_vencer" style="background-color: var(--orange);"></div>
-        <div id="vencidos" style="background-color: var(--red);"></div>
+        <div id="en_tiempo" class="background-green"></div>
+        <div id="a_vencer" class="background-orange"></div>
+        <div id="vencidos" class="background-red"></div>
       </div>
 
       <div class="d-flex justify-content-start" style="gap:1rem;flex-wrap:wrap;">
 
         <div class="contador big" onclick="abrirEnlace('{{ route('dashboard', 'en_tiempo') }}')">
-          <div class="value green">{{$contador->en_tiempo}}</div>
-          <div class="text">@if ($contador->en_tiempo==1) incidente @else incidentes @endif dentro del SLA</div>
+          <div class="value text-green">{{$contador->en_tiempo}}</div>
+          <div class="text">@if ($contador->en_tiempo==1) incidente @else incidentes @endif <br>dentro del SLA</div>
         </div>
 
         <div class="contador big" onclick="abrirEnlace('{{ route('dashboard', 'a_vencer') }}')">
-          <div class="value orange">{{$contador->a_vencer}}</div>
-          <div class="text">@if ($contador->a_vencer==1) incidente @else incidentes @endif próximos a vender</div>
+          <div class="value text-orange">{{$contador->a_vencer}}</div>
+          <div class="text">@if ($contador->a_vencer==1) incidente @else incidentes @endif <br>próximos a vencer</div>
         </div>
 
         <div class="contador big" onclick="abrirEnlace('{{ route('dashboard', 'vencidos') }}')">
-          <div class="value red">{{$contador->vencidos}}</div>
-          <div class="text">@if ($contador->vencidos==1) incidente @else incidentes @endif fuera del SLA</div>
+          <div class="value text-red">{{$contador->vencidos}}</div>
+          <div class="text">@if ($contador->vencidos==1) incidente @else incidentes @endif <br>fuera del SLA</div>
         </div>
 
       </div>
@@ -133,31 +149,31 @@
           @forelse ($incidentes as $value)
               <tr>
                   <td>
-                    <a href="{{ route('incidentes.edit', (int)$value->id) }}">
+                    <a href="{{ route('incidentes.show', (int)$value->id) }}">
                       <img src="{{asset('assets/icons/'.$value->pid.'.svg')}}" alt="" class="priority">
                       {{ str_pad($value->id, 7, '0', STR_PAD_LEFT) }}
                     </a>
                   </td>
                   <td class="td-truncated">
-                    <a href="{{ route('incidentes.edit', (int)$value->id) }}">
-                      <span class="mr-2" style="font-weight:600;">{{ $value->cliente->descripcion }}</span>
+                    <a href="{{ route('incidentes.show', (int)$value->id) }}">
+                      <span class="mr-2" style="font-weight:600;">{{ $value->inc_cliente->descripcion }}</span>
                       {{ $value->titulo }}
                     </a>
                   </td>
                   <td class="d-none d-lg-table-cell">
-                    <a href="{{ route('incidentes.edit', (int)$value->id) }}">
+                    <a href="{{ route('incidentes.show', (int)$value->id) }}">
                         <span style="font-weight:500;">{{ $value->fecha_ingreso->rawFormat('d-m-Y') }}</span>
                         <span class="text-secondary" style="font-size:.75rem;">{{ $value->fecha_ingreso->rawFormat(' H:i') }}</span>
                     </a>
                   </td>
                   <td class="d-none d-md-table-cell" class="td-truncated">
-                    <a href="{{ route('incidentes.edit', (int)$value->id) }}">
-                      @if ($value->status!=0 && $value->asignado->nombre)
-                          <img src="{{ $value->asignado->avatar }}" alt="">
-                          {{ $value->asignado->nombre }}
+                    <a href="{{ route('incidentes.show', (int)$value->id) }}">
+                      @if ($value->status!=0 && $value->inc_asignado->nombre)
+                          <img src="{{ $value->inc_asignado->avatar }}" alt="">
+                          {{ $value->inc_asignado->nombre }}
                       @else
-                          <img src="{{ Storage::url('/public/profile/unassigned.png') }}" alt="">
-                          <span style="color:gray;">Sin asignar</span>
+                          <img src="{{ asset('storage/profile/unassigned.png') }}" alt="">
+                          <span class="text-dimm">Sin asignar</span>
                       @endif
                     </a>
                   </td>
@@ -170,7 +186,9 @@
           @endforelse
           </tbody>
         </table>
-        {{ $incidentes->appends(request()->query())->links(true) }}
+        @if ($incidentes->count()>0)
+          {{ $incidentes->appends(request()->query())->links(true) }}
+        @endif
         <br><br>
     @endif
 
@@ -236,8 +254,14 @@
 </div>
 
 <script>
+
+  var qry = '{{$query}}';
+  var arrayUsuarios = @json($usuarios);
+  var arrayGrupos = @json($grupos->toArray());
+  var currentUser = '{{ $filtros['usuario']}}';
+
   function abrirEnlace($enlace) {
-      window.location = $enlace;
+      window.location = $enlace + (qry=='' ? '' : '?' + qry);
   }
 
   function filtrar() {
@@ -253,17 +277,10 @@
 
   $(document).ready(function(e)
   {
-    var obj = <?php echo json_encode($usuarios); ?>;
-    var arrayUsuarios = Object.values(obj);
-
-    var obj2 = <?php echo json_encode($grupos); ?>;
-    var arrayGrupos = Object.values(obj2);
-
-    var currentUser = '{{ $filtros['usuario']}}';
-
     $('#grupo').on('change', function ()
     {
       var grupo = this.value;
+      console.log("GRUPO", grupo)
 
       $("#usuario").children().remove();
 

@@ -2,73 +2,81 @@
 
 class SessionFilters
 {
+    private static $filters = [
+        'incidentes' => [
+            'grupo', 
+            'usuario', 
+            'cliente', 
+            'status', 
+            'area', 
+            'tipo_incidente', 
+            'modulo', 
+            'prioridad', 
+            'orden', 
+            'buscar', 
+            'page'
+        ],
+        'tablero' => [
+            'usuario', 
+            'grupo', 
+            'cliente'
+        ]
+    ];
 
-    public static function getFilters($request, $session_key, $filters)
+
+    public static function getFilters($key)
     {
-        $filtros = array();
-        $check = array();
+        $defined_filters = self::$filters[$key];
+
+        $request_filters = request()->input();
+        $session_filters = $_SESSION[$key] ?? [];
+        $coockie_filters = $_COOKIE[$key] ?? [];
+
+        $result = [];
 
         # Verificamos los filtros a chequear desde el request
-        foreach ($filters as $filter)
+        # Si no existen en el request los buscamos en la sesion
+        # Si tampoco estan en la sesion los buscamos en las cookies
+        foreach ($defined_filters as $filter)
         {
-            $check[$filter] = $request->$filter;
-        }
+            $current = isset($filter, $request_filters)
+                ? $request_filters[$filter]
+                : (array_key_exists($filter, $session_filters)
+                    ? $session_filters[$filter]
+                    : $coockie_filters[$filter]
+                );
 
-        # Si no hay una sesion con los filtros, buscamos si existe una cookie
-        # Si es el caso, guardamos los filtros en la sesion
-		if (!isset($_SESSION[$session_key]))
-		{
-			$t = env('APP_NAME').'_filters';
-			if (isset($_COOKIE[$t]))
-				$_SESSION[$session_key] = json_decode($_COOKIE[$t], true);
-		}
-
-        # Seteamos los filtros desde la sesion
-		if (isset($_SESSION[$session_key]))
-		{
-            foreach ($filters as $filter)
-            {
-                if ($filter=='buscar')
-                {
-                    if (isset($_SESSION[$session_key]['buscar']) && is_null($check[$filter])) 
-                    $check[$filter] = $_SESSION[$session_key][$filter];
-                    
-                }
-                else
-                {
-                    if (isset($_SESSION[$session_key][$filter]) && !$check[$filter])
-                        $check[$filter] = $_SESSION[$session_key][$filter];
-                }
+            # Si buscar está vacío lo dejamos en null
+            if ($filter=='buscar') {
+                $current = blank($current) ? null : $current;
             }
-		} 
 
-        # Tomamos los filtros que no devuelvan 'todos'
-        foreach ($filters as $filter)
-        {
-            if ($filter=='buscar' && $check[$filter]!='')
-                $filtros[$filter] = $check[$filter];
+            # Si la pagina es "1" lo dejamos en null
+            elseif ($filter=='page') {
+                $current = $current==1 ? null : $current;
+            }
 
-            if ($filter=='orden' && $check[$filter]!='')
-                $filtros[$filter] = $check[$filter];
+            # Para el resto, si es "todos" lo dejamos en null
+            elseif ($current=='todos') {
+                $current = null;
+            }
 
-            if ($filter=='p' && $check[$filter]!=1)
-                $filtros[$filter] = $check[$filter];
+            # Para el orden, si no existe seteamos por defecto
+            if ($filter=='orden' && $current==null) {
+                $current = 'incidentes_desc';
+            }
 
-            elseif ($check[$filter] && $check[$filter]!='todos')
-                $filtros[$filter] = $check[$filter];
+            $result[$filter] = $current;
         }
 
-        # Guardamos los filtros finales (excluyendo los que no aplican)
-		$_SESSION[$session_key] = $filtros;
+        # Guardamos los filtros en la sesion
+		$_SESSION[$key] = $result;
 
-        setcookie(env('APP_NAME').'_filters', json_encode($filtros), time()+172800, '/'.env('PUBLIC_FOLDER'), $_SERVER["APP_URL"], false);
+        # Lo guardamos también en las cookies
+        setcookie($key, json_encode($result), time()+172800, '/'.env('PUBLIC_FOLDER'), $_SERVER["APP_URL"], false);
 
-        return $filtros;
+        return $result;
 
     }
-
-
-
-
 
 }

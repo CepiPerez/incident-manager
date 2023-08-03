@@ -5,8 +5,41 @@ Class Correo
     public static function verificar($avance)
     {
         //$avance = Avance::find($avance);
-        //dd($avance);
+        //dd($avance, in_array((int)$avance->tipo_avance, array(2, 101)));
 
+
+        // Por ahora solamente enviamos mail para:
+        // 101 - Creacion de incidente
+        // 2 - Derivacion de incidente
+        if (!in_array((int)$avance->tipo_avance, array(2, 101))) {
+            return;
+        }
+
+        self::envioInterno($avance);
+
+        //self::envioAlCliente($avance);
+    }
+
+    private static function envioInterno($avance)
+    {
+        $usuario = User::where('Usuario', $avance->destino)->first();
+        $email = $usuario->Mail;
+        $enviar = TipoAvance::find($avance->tipo_avance)->correo==1;
+        
+        $domain = ltrim(stristr($email, '@'), '@');
+        $user = str_replace('@'.$domain, '', $email);
+        
+        if (!empty($user) && !empty($domain) && $enviar ) //&& $cliente->cliente!=5)
+        {
+            //Enviar notificacion por correo
+            return self::enviarCorreo($avance, $email);
+        }
+        
+        return false;
+    }
+
+    private static function envioAlCliente($avance)
+    {
         $usuario = Incidente::find($avance->incidente)->usuario;
         $cliente = User::where('Usuario', $usuario)->first();
         $email = $cliente->Mail;
@@ -19,15 +52,16 @@ Class Correo
         if (!empty($user) && !empty($domain) && $enviar ) //&& $cliente->cliente!=5)
         {
             //Enviar notificacion por correo
-            return self::enviarCorreo($avance, $cliente);
+            return self::enviarCorreo($avance, $email);
         }
         
         return false;
-
     }
 
-    private static function enviarCorreo($avance, $cliente)
+
+    private static function enviarCorreo($avance, $destino)
     {
+        //dd($avance, $destino);
         //echo "Enviando correo a $cliente->Mail...";
 
         if (!Storage::exists('../templates_correo/tipo_avance_'.$avance->tipo_avance.'.html'))
@@ -48,34 +82,31 @@ Class Correo
         $template = str_replace('$REPRESENTANTE_NUEVO', $dest, $template);
         $template = str_replace('$REPRESENTANTE', Auth::user()->nombre, $template);
         $template = str_replace('$DESCRIPCION', $desc, $template);
-        $template = str_replace('$LINK', route('incidentes.edit', $avance->incidente), $template);
+        $template = str_replace('$LINK', route('incidentes.show', $avance->incidente), $template);
+        $template = str_replace('$LOGO', asset('assets/logonewrol.png'), $template);
 
         $subject = 'Aviso de actualizacion del incidente '.str_pad($avance->incidente, 7, '0', STR_PAD_LEFT);
-        
-        /* // PRUEBA mail()
-        $encoding = "utf-8";
-        $subject_preferences = array(
-            "input-charset" => $encoding,
-            "output-charset" => $encoding,
-            "line-length" => 76,
-            "line-break-chars" => "\r\n"
-        );
 
-        $header = "MIME-Version: 1.0 \r\n";
-        $header .= "Content-type: text/html; charset=utf-8 \r\n";
-        $header .= "Content-Transfer-Encoding: 8bit \r\n";
-        $header .= "Date: ".date("r (T)")." \r\n";
-        $header .= "From: SOPORTE NEWROL <soporte.newrol@gmail.com> \r\n";
-        $header .= 'To: '.$cliente->Mail."\r\n";
-        $header .= iconv_mime_encode("Subject", $subject, $subject_preferences);
-        return mail($cliente->Mail, $subject, $template, $header); */
+        if ((int)$avance->tipo_avance==101) {
+            $subject = 'Aviso de creación del incidente '.str_pad($avance->incidente, 7, '0', STR_PAD_LEFT);
+        }
 
-        Mail::to('cepiperez@gmail.com')
+        $body = '<!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Document</title>
+            </head>
+            <body>
+                ' . $template . '
+            </body>
+            </html>';
+
+        Mail::to($destino)
 			->subject($subject)
-			->send(new Notificacion($template));
+			->send($body);
 		
-
-
     }
 
 

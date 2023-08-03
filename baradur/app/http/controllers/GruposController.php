@@ -29,7 +29,10 @@ class GruposController extends Controller
 			'descripcion' => 'required|max:50|unique:grupos,descripcion'
 		]);
 
-		$grupo = Grupo::create(['descripcion' => $request->descripcion]);
+		$grupo = Grupo::create([
+			'descripcion' => $request->descripcion,
+			'email' => $request->email
+		]);
 
 		if ($request->users)
 		{
@@ -61,16 +64,16 @@ class GruposController extends Controller
 
 	public function update(Request $request, $id)
 	{
-		//dd($request->all());
 		$grupo = Grupo::findOrFail($id);
 		$grupo->descripcion = $request->descripcion;
+		$grupo->email = $request->email;
 		
 		if ($request->users)
 		{
 			$users = array(); 
 			foreach ($request->users as $key => $val)
 				$users[] = $val;
-			
+
 			$grupo->miembros()->sync($users);
 		}
 		else

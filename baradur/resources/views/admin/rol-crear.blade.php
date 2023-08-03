@@ -50,7 +50,7 @@
         </div>
         @endforeach
 
-        @foreach (Permiso::where('id', '>', 4)->where('id', '<', 8)->get() as $perm)
+        @foreach (Permiso::where('id', '>', 4)->where('id', '<', 50)->get() as $perm)
           <div class="form-check pb-2 ml-0">
             <input type="checkbox" class="form-check-input" name="permisos[]" id="{{$perm->id}}"
               value="{{$perm->id}}">
@@ -60,11 +60,33 @@
         @endforeach
 
         <div id="admin">
+
+          <h5 class="mt-4">Permisos de Usuarios Internos</h5>
+          <hr class="mt-0 mb-2">
+
+          @foreach (Permiso::whereBetween('id', array(50, 60))->get() as $perm)
+            <div class="form-check pb-2 ml-0">
+              <input type="checkbox" class="form-check-input" name="permisosadm[]" id="{{$perm->id}}"
+                value="{{$perm->id}}" @checked( in_array($perm->id, $permisos_rol) )>
+              <label class="ml-2 form-check-label" style="padding-top:1px;" 
+                onclick="document.getElementById('{{$perm->id}}').click()">{{ __('ticketera.'.$perm->descripcion) }}</label>
+            </div>
+          @endforeach
+
+          {{-- @foreach (Permiso::whereBetween('id', [53, 55])->get() as $perm)
+          <div class="form-check" style="height:2rem;">
+            <input class="form-check-input" type="radio" name="permisosadm[]" id="{{$perm->id}}"
+              value="{{$perm->id}}" @checked( in_array($perm->id, $permisos_rol) )>
+              <label class="ml-2 form-check-input" style="top:-3px;" 
+                onclick="elementClick('{{$perm->id}}')">{{ __('ticketera.'.$perm->descripcion) }}</label>
+            </label>
+          </div>
+          @endforeach --}}
           
-          <h5 class="mt-2">Permisos de Administrador</h5>
+          <h5 class="mt-4">Permisos de Administrador</h5>
           <hr class="mt-0 mb-2">
   
-          @foreach (Permiso::where('id', '>', 7)->get() as $perm)
+          @foreach (Permiso::where('id', '>', 100)->get() as $perm)
             <div class="form-check pb-2 ml-0">
               <input type="checkbox" class="form-check-input" name="permisosadm[]" id="{{$perm->id}}"
                 value="{{$perm->id}}">
@@ -92,13 +114,36 @@
     $(":checkbox").on('change', function ()
     {
 
-      if (this.value==8) {
+      if (this.value==101) {
         if (this.checked) {
-          $('#9').prop('checked', false);
+          $('#102').prop('checked', false);
       }}
-      if (this.value==9) {
+
+      if (this.value==102) {
         if (this.checked) {
-          $('#8').prop('checked', false);
+          $('#101').prop('checked', false);
+      }}
+
+      if (this.value==50) {
+        if (!this.checked) {
+          $('#51').prop('checked', false);
+          $('#52').prop('checked', false);
+        }
+      }
+
+      if (this.value==51) {
+        if (this.checked) {
+          $('#50').prop('checked', true);
+      }}
+
+      if (this.value==52) {
+        if (this.checked) {
+          $('#50').prop('checked', true);
+      }}
+
+      if (this.value==53) {
+        if (this.checked) {
+          $('#50').prop('checked', true);
       }}
 
     });
@@ -132,6 +177,7 @@
 
     $('#2').prop('checked', true);
     $('#7').prop('checked', true);
+    $('#54').prop('checked', true);
     $('#tipo').change();
 
   });

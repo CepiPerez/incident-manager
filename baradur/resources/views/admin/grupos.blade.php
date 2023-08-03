@@ -18,7 +18,7 @@
         <thead>
           <tr>
             <th class="d-none d-md-table-cell" style="width:5rem;">ID</th>
-            <th class="th-auto">Dscripcion</th>
+            <th class="th-auto">Descripcion</th>
             <th class="d-none d-sm-table-cell text-center" style="width:8rem;">Miembros</th>
             <th style="text-align:right;width:7rem;">ACCIONES</th>
           </tr>

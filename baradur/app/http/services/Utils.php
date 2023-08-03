@@ -35,11 +35,11 @@ Class Utils
 
         $dateDiff = ($horas - $sla) *60;
         $expired = $dateDiff > 0;
-        $created = Carbon::now()->subMinutes($dateDiff);
+        $created = $expired? now()->subMinutes(abs($dateDiff)) : now()->addMinutes(abs($dateDiff));
 
         return  [
             'expired' => $expired, 
-            'text' => ($expired? 'Vencido ':'Vence '). $created->diffForHumans( $expired? [] : ['parts' => 2], Carbon::DIFF_RELATIVE_TO_NOW ),
+            'text' => ($expired? 'Vencido ':'Vence '). now()->diffForHumans($created, Carbon::DIFF_RELATIVE_TO_NOW, true, 1),// $created->diffForHumans( $expired? [] : ['parts' => 2], Carbon::DIFF_RELATIVE_TO_NOW ),
             'hours' => $created->diffInHours()
         ];
 

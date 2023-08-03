@@ -43,6 +43,43 @@ class AdminPolicy
         return in_array(7, $perm);
     }
 
+    public function periodos($user)
+    {
+        if ($user->rol==1) return true;
+
+        $rol = $user->roles;
+        $perm = $rol? $rol->permisos->pluck('id')->toArray() : array();
+        return in_array(50, $perm);
+    }
+
+    public function crearPeriodos($user)
+    {
+        if ($user->rol==1) return true;
+        if ($user->tipo==0) return false;
+
+        $rol = $user->roles;
+        $perm = $rol? $rol->permisos->pluck('id')->toArray() : array();
+        return in_array(51, $perm);
+    }
+
+    public function adminTareas($user)
+    {
+        if ($user->rol==1) return true;
+
+        $rol = $user->roles;
+        $perm = $rol? $rol->permisos->pluck('id')->toArray() : array();
+        return in_array(52, $perm);
+    }
+
+    public function incBacklog($user)
+    {
+        if ($user->rol==1) return true;
+
+        $rol = $user->roles;
+        $perm = $rol? $rol->permisos->pluck('id')->toArray() : array();
+        return in_array(53, $perm);
+    }
+
     public function adminPanel($user)
     {
         if ($user->rol==1) return true;
@@ -50,9 +87,12 @@ class AdminPolicy
 
         $rol = $user->roles;
         $perm = $rol? $rol->permisos->pluck('id')->toArray() : array();
-        return ( in_array(8, $perm) || in_array(9, $perm) || in_array(10, $perm) 
-            || in_array(11, $perm) || in_array(12, $perm) || in_array(13, $perm)
-            || in_array(14, $perm) || in_array(15, $perm)  || in_array(16, $perm));
+        
+        foreach ($perm as $p) {
+            if ($p > 100) return true;
+        }
+
+        return false;
     }
 
     public function adminUsuarios($user)
@@ -62,19 +102,18 @@ class AdminPolicy
 
         $rol = $user->roles;
         $perm = $rol? $rol->permisos->pluck('id')->toArray() : array();
-        return ( in_array(8, $perm) || in_array(9, $perm) );
+        return ( in_array(101, $perm) || in_array(102, $perm) );
     }
 
-    public function adminGrupos($user)
+    public function adminUsuariosInternos($user)
     {
         if ($user->rol==1) return true;
         if ($user->tipo==0) return false;
 
         $rol = $user->roles;
         $perm = $rol? $rol->permisos->pluck('id')->toArray() : array();
-        return ( in_array(17, $perm) || in_array(9, $perm) );
+        return ( in_array(101, $perm) );
     }
-
 
     public function adminRoles($user)
     {
@@ -83,7 +122,7 @@ class AdminPolicy
 
         $rol = $user->roles;
         $perm = $rol? $rol->permisos->pluck('id')->toArray() : array();
-        return in_array(10, $perm);
+        return in_array(103, $perm);
     }
 
     public function adminClientes($user)
@@ -93,7 +132,7 @@ class AdminPolicy
 
         $rol = $user->roles;
         $perm = $rol? $rol->permisos->pluck('id')->toArray() : array();
-        return in_array(11, $perm);
+        return in_array(104, $perm);
     }
 
     public function adminAreas($user)
@@ -103,7 +142,7 @@ class AdminPolicy
 
         $rol = $user->roles;
         $perm = $rol? $rol->permisos->pluck('id')->toArray() : array();
-        return in_array(12, $perm);
+        return in_array(105, $perm);
     }
 
     public function adminModulos($user)
@@ -113,7 +152,7 @@ class AdminPolicy
 
         $rol = $user->roles;
         $perm = $rol? $rol->permisos->pluck('id')->toArray() : array();
-        return in_array(13, $perm);
+        return in_array(106, $perm);
     }
 
     public function adminTipoIncidente($user)
@@ -123,7 +162,7 @@ class AdminPolicy
 
         $rol = $user->roles;
         $perm = $rol? $rol->permisos->pluck('id')->toArray() : array();
-        return in_array(14, $perm);
+        return in_array(107, $perm);
     }
 
     public function adminTipoServicio($user)
@@ -133,7 +172,7 @@ class AdminPolicy
 
         $rol = $user->roles;
         $perm = $rol? $rol->permisos->pluck('id')->toArray() : array();
-        return in_array(15, $perm);
+        return in_array(108, $perm);
     }
 
     public function adminTipoAvance($user)
@@ -143,7 +182,18 @@ class AdminPolicy
 
         $rol = $user->roles;
         $perm = $rol? $rol->permisos->pluck('id')->toArray() : array();
-        return in_array(16, $perm);
+        return in_array(109, $perm);
+    }
+
+
+    public function adminGrupos($user)
+    {
+        if ($user->rol==1) return true;
+        if ($user->tipo==0) return false;
+
+        $rol = $user->roles;
+        $perm = $rol? $rol->permisos->pluck('id')->toArray() : array();
+        return ( in_array(110, $perm));
     }
 
     public function verIncidente($user, $inc)

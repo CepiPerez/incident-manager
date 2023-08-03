@@ -3,28 +3,44 @@
 Class FormRequest extends Request
 {
 
+
     protected function prepareForValidation()
     {
-        return request()->all();
+        return $this->all();
     }
 
-    public function validateRules($rules)
+    protected function passedValidation()
+    {
+        //
+    }
+
+    public function validateRules()
     {
         $this->post = $this->prepareForValidation();
-        request()->validate($rules);
+
+        $res = $this->validate($this->rules());
+
+        if ($res) {
+            $this->passedValidation();
+        }
     }
 
     public function validated()
     {
-        return request()->validated();
+        return $this->validated;
     }
 
     public function merge($array = array())
     {
         foreach ($array as $key => $val)
         {
-            request()->$key = $val;
+            $this->$key = $val;
         }
+    }
+
+    public function rules()
+    {
+        return array();
     }
     
 }

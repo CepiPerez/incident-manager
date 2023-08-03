@@ -71,14 +71,16 @@ class Ulid
         }
 
         $res = new Ulid(substr($value, 0, self::$TIME_LENGTH), substr($value, self::$TIME_LENGTH, self::$RANDOM_LENGTH), $lowercase);
-        return $res->__toString();
+        
+        //return $res->__toString();
+        return $res;
     }
 
     /**
      * Create a ULID using the given timestamp.
      * @param int $milliseconds Number of milliseconds since the UNIX epoch for which to generate this ULID.
      * @param bool $lowercase True to output lowercase ULIDs.
-     * @return Ulid Returns a ULID object for the given microsecond time.
+     * @return string Returns a ULID object for the given microsecond time.
      */
     public static function fromTimestamp($milliseconds, $lowercase = true)
     {
@@ -119,16 +121,27 @@ class Ulid
         return $res->__toString();
     }
 
-    public static function generate($lowercase = true)
+    public static function generate($time = null)
     {
-        $now = (int) (microtime(true) * 1000);
+        $now = null;
+
+        if ($time) {
+            $now = (int) (microtime(true) * 1000);
+        } else {
+            $now = (int) (Carbon::parse($time)->timestamp * 1000);
+        }
         
-        return self::fromTimestamp($now, $lowercase);
+        return self::fromTimestamp($now, true);
     }
 
     public function getTime()
     {
         return $this->time;
+    }
+
+    public function getDateTime()
+    {
+        return $this->toTimestamp();
     }
 
     public function getRandomness()

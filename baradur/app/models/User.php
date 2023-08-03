@@ -8,6 +8,8 @@ class User extends Model
 
     protected $primaryKey = 'idT';
 
+    protected $hidden = ['Password'];
+
     public function scopeActivos($query)
     {
         return $query->where('activo', 1)->orderBy('nombre');
@@ -54,11 +56,6 @@ class User extends Model
         if (Storage::exists('profile/'. (int)$this->idT.'.webp'))
             return Storage::url('profile/'. (int)$this->idT.'.webp');
         
-        //$nombre = str_replace(' ', '+', $this->nombre ?? $this->Usuario);
-        //$avatar = Http::get("https://ui-avatars.com/api/?name=$nombre&background=random", false);
-        //Storage::put('profile/'.(int)$this->idT.'.png', $avatar);
-        //return Storage::url('/public/profile/'. (int)$this->idT.'.png');
-
         return Storage::url('profile/default.png');
     }
 

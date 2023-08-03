@@ -9,7 +9,7 @@ class Incidente extends Model
     ];
 
     protected $fillable = [
-        'cliente', 'titulo', 'descripcion', 'mail', 'tel', 'fecha_ingreso', 'tipo_incidente', 
+        'cliente', 'titulo', 'descripcion', 'mail', 'tel', 'fecha_ingreso', 'tipo_incidente', 'periodo', 
         'status', 'grupo', 'asignado', 'usuario', 'remitente', 'area', 'modulo', 'prioridad', 'sla'
     ];
 
@@ -30,18 +30,11 @@ class Incidente extends Model
 
     public function avances()
     {
-        /* if(Auth::user()->cliente==5)
-            return $this->hasMany(Avance::class, 'incidente', 'id')
-                ->selectRaw('avances.*, ta.descripcion as tipo_desc, gr.descripcion as grupo_desc')
-                ->leftJoin('tipo_avances as ta', 'codigo', '=', 'tipo_avance')
-                ->leftJoin('grupos as gr', 'codigo', '=', 'grupo_destino');
-        else */
             return $this->hasMany(Avance::class, 'incidente', 'id')
                 ->selectRaw('avances.*, ta.descripcion as tipo_desc, ta.visible, gr.descripcion as grupo_desc')
-                ->leftJoin('tipo_avances as ta', 'codigo', '=', 'tipo_avance')
-                ->leftJoin('grupos as gr', 'codigo', '=', 'grupo_destino')
+                ->leftJoin('tipo_avances as ta', 'ta.codigo', '=', 'avances.tipo_avance')
+                ->leftJoin('grupos as gr', 'gr.codigo', '=', 'avances.grupo_destino')
                 ->where('tipo_avance', '<', 101)->orderBy('fecha_ingreso');
-
     }
 
     public function avances_resumido()
@@ -50,6 +43,13 @@ class Incidente extends Model
                 ->selectRaw('incidente, fecha_ingreso, tipo_avance')
                 ->where('tipo_avance', '<', 30)
                 ->orderBy('fecha_ingreso');
+    }
+
+    public function avances_estimado()
+    {
+        return $this->hasOne(Avance::class, 'incidente', 'id')
+                ->selectRaw('incidente, fecha_ingreso, tipo_avance, descripcion')
+                ->where('tipo_avance', 8);
     }
 
     public function inc_usuario()

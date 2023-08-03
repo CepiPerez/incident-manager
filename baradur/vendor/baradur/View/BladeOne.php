@@ -41,6 +41,8 @@ class BladeOne
     protected $footer = array();
     protected $verbatimPlaceholder = '__verbatim__';
     protected $verbatimBlocks = array();
+    protected $scriptPlaceholder = '__script_tag__';
+    protected $scriptBlocks = array();
     protected $forelseCounter = 0;
     protected $compilers = array(
         'SelfClosingComponents',
@@ -62,6 +64,11 @@ class BladeOne
 
     protected $firstCaseInSwitch = true;
 
+    protected $fragments = array();
+    protected $fragmentStack = array();
+    protected $lastFragment;
+
+    public $html;
 
     public function __construct($templatePath, $compiledPath)
     {
@@ -78,7 +85,7 @@ class BladeOne
 
     public function run($view,$variables=array())
     {
-        $mode = 0; //env('APP_ENV')=='production'? 0 : 1; // mode=0 automatic: not forced and not run fast.
+        $mode = 0; // mode=0 automatic: not forced and not run fast.
         $forced = $mode & 1; // mode=1 forced:it recompiles no matter if the compiled file exists or not.
         $runFast = $mode & 2; // mode=2 runfast: the code is not compiled neither checked and it runs directly the compiled
 
@@ -133,9 +140,6 @@ class BladeOne
             # Remove all HTML comments
             /* $contents = preg_replace('/<!--([\s\S]*?)-->/x', '', $contents); */
 
-            # Replace models functions
-            $contents = preg_replace_callback('/(\w*)::(\w*)/x', 'callbackReplaceStatics', $contents);
-
             # compile the original file
             $contents = $this->compileString($contents);
 
@@ -157,7 +161,22 @@ class BladeOne
             $value = $this->storeVerbatimBlocks($value);
         }
 
+        if (strpos($value, '<script') !== false) {
+            $value = $this->storeScriptBlocks($value);
+        }
+
         $this->footer = array();
+
+        $value = preg_replace('/\{{2}([^\{])/x', '{{ $1', $value);
+        $value = preg_replace('/([^\}])\}{2}/x', '$1 }}', $value);
+        $value = str_replace('{{  ', '{{ ', $value);
+        $value = str_replace('  }}', ' }}', $value);
+        $value = str_replace('{{ --', '{{--', $value);
+        $value = str_replace('-- }}', '--}}', $value);
+    
+        # Replace new PHP version functions
+        global $phpConverter;
+        $value = $phpConverter->replaceForView($value);
 
         // Here we will loop through all of the tokens returned by the Zend lexer and
         // parse each one into the corresponding valid PHP. We will then have this
@@ -173,10 +192,15 @@ class BladeOne
         }
         $result = '<?php global $errors; ?>'.$value;
 
+        if (! empty($this->scriptBlocks)) {
+            $result = $this->restoreScriptBlocks($result);
+        }
 
         if (! empty($this->verbatimBlocks)) {
             $result = $this->restoreVerbatimBlocks($result);
         }
+
+       
 
         // If there are any footer lines that need to get added to a template we will
         // add them here at the end of the template. This gets used mainly for the
@@ -225,7 +249,6 @@ class BladeOne
 
     protected function compileError($expression)
     {
-        /* return $this->phpTag."if ( App::getError{$expression} ): ?>"; */
         return $this->phpTag.' $__errorMsg = App::getError('.$expression.');
         if ($__errorMsg) :
         if (isset($message)) $__messageOriginal = $message;
@@ -242,15 +265,13 @@ class BladeOne
 
     protected function compileCsrf()
     {
-        //$csrf = App::generateToken();
-        //$template = '<input type="hidden" id="csrf" name="csrf" value="'.$csrf.'">';
         return $this->phpTag.'echo csrf_field(); ?>';
     }
 
     protected function compileClass($expression)
     {
         $expression = is_null($expression) ? '(array())' : $expression;
-        return "class=\"<?php echo Helpers::toCssClasses{$expression} ?>\"";
+        return "class=\"<?php echo Arr::toCssClasses{$expression} ?>\"";
     }
 
     private function parseAttributeBag($attributeString)
@@ -329,24 +350,49 @@ class BladeOne
         {
             $content = str_replace($slot[1], '', $content);
         }
-        //dd($content);
         
-        return $this->createComponent($component, $attributes, $content);
+        return $component=='dynamic-component' ? 
+            $this->createDynamicComponent($component, $attributes, $content) :
+            $this->createComponent($component, $attributes, $content);
 
+    }
+
+    protected function createDynamicComponent($component, $attributes, $content)
+    {
+        $component = $attributes['component'];
+        $component = ltrim(str_replace('{{', '', str_replace('}}', '', $component)), '$');
+        unset($attributes['component']);
+
+        $attr = '';
+        foreach ($attributes as $key => $val) {
+            $attr .= " $key='$val'";
+        }
+
+        $result = '{{ Blade::render("<x-$'.$component.$attr.'>'.$content.'</x-$'.$component.'>", array()) }}';
+        
+        return $result; 
+    }
+
+    protected function createDynamicSelfClosingComponent($component, $attributes)
+    {
+        $attr = '';
+        foreach ($attributes as $key => $val) {
+            $attr .= " $key='$val'";
+        }
+
+        $result = '{{ Blade::render("<x-$'.$component.' '.$attr.'/>", array()) }}';
+        return $result; 
     }
 
     protected function createComponent($component, $attributes, $content=null)
     {
-        //dump($component);
-        //dd($attributes);
-
-        //dd($this->component_slots);
+        global $_class_list;
 
         $c =  Blade::__findComponent($component); //ucfirst($component).'Component';
         $instance = null;
         $reflect = null;
 
-        if (class_exists($c))
+        if (isset($_class_list[$c]))
         {
             $ReflectionMethod = new \ReflectionMethod($c, '__construct');
             $params = $ReflectionMethod->getParameters();
@@ -365,19 +411,20 @@ class BladeOne
         }
         else
         {
-            $reflect  = new ReflectionClass('Component');
-            $instance = $reflect->newInstance();
+            /* $reflect  = new ReflectionClass('Component');
+            $instance = $reflect->newInstance(); */
+            $instance = new Component;
             $instance->setComponent($component);
             $instance->setAttributes($attributes);
             $instance->slot = $content;
-            //ddd($instance);
+            //dd($instance);
         }
         
 
         global $app, $temp_params;
 
         $temp_params = array();
-        if (class_exists($c))
+        if (isset($_class_list[$c]))
         {
             $instance->attributes = $attributes;
 
@@ -411,7 +458,7 @@ class BladeOne
         if (is_object($result)) 
         {
             View::$autoremove = true;
-            $result = $result->result->__toString();
+            $result = $result->__toString();
         }
         $app->action = $back_action;
 
@@ -472,15 +519,20 @@ class BladeOne
 
         $attributes = $this->getArrayAttributesFromAttributeString(trim($match[2]));
         
+        $dynamic = false;
+
         if ($component=='dynamic-component' && isset($attributes['component']))
         {
-            $val = $attributes['component'];
-            $val = ltrim(str_replace('{{', '', str_replace('}}', '', $val)), '$');
-            $component = $this->variables[$val];
+            $dynamic = true;
+            $component = $attributes['component'];
+            $component = ltrim(str_replace('{{', '', str_replace('}}', '', $component)), '$');
+            //$component = $this->variables[$val];
             unset($attributes['component']);
         }
                 
-        return $this->createComponent($component, $attributes);
+        return $dynamic ? 
+            $this->createDynamicSelfClosingComponent($component, $attributes) :
+            $this->createComponent($component, $attributes);
 
     }
 
@@ -646,10 +698,6 @@ class BladeOne
             }
         }
 
-        /* $wrapped = str_replace('asset(', 'View::getAsset(', $wrapped);
-        $wrapped = str_replace('route(', 'Route::getRoute(', $wrapped);
-        $wrapped = str_replace('session(', 'App::getSession(', $wrapped); */
-
         
         return $this->phpTag.'echo '.$wrapped.'; ?>'.$whitespace;
     }
@@ -679,8 +727,10 @@ class BladeOne
 
     public function compileEchoDefaults($value)
     {
-        
-        return preg_replace('/^(?=\$)(.+?)(?:\s+or\s+)(.+?)$/s', 'isset($1) ? $1 : $2', $value);
+        return $value;
+
+        // {{ $something or 'empty' }} was removed from Blade
+        //return preg_replace('/^(?=\$)(.+?)(?:\s+or\s+)(.+?)$/s', 'isset($1) ? $1 : $2', $value);
     }
 
     protected function compileEach($expression)
@@ -920,6 +970,16 @@ class BladeOne
         return $this->phpTag."elseif ( Gate::allows{$expression} ): ?>";
     }
 
+    protected function compileCanany($expression)
+    {
+        return $this->phpTag."if ( Gate::any{$expression} ): ?>";
+    }
+
+    protected function compileElsecanany($expression)
+    {
+        return $this->phpTag."elseif ( Gate::any{$expression} ): ?>";
+    }
+
     protected function compileCannot($expression)
     {
         return $this->phpTag."if ( Gate::denies{$expression} ): ?>";
@@ -972,6 +1032,11 @@ class BladeOne
         return $this->phpTag.'endif; ?>';
     }
 
+    protected function compileEndcanany()
+    {
+        return $this->phpTag.'endif; ?>';
+    }
+
     protected function compileEndcannot()
     {
         return $this->phpTag.'endif; ?>';
@@ -1000,7 +1065,7 @@ class BladeOne
     protected function compileEnv($expression)
     {
         $expression = $this->stripParentheses($expression);
-        return $this->phpTag."if ( env('APP_ENV')==$expression ): ?>";
+        return $this->phpTag."if ( config('app.env')==$expression ): ?>";
     }
 
     protected function compileEndEnv()
@@ -1010,7 +1075,7 @@ class BladeOne
 
     protected function compileProduction()
     {
-        return $this->phpTag."if ( env('APP_ENV')=='production' ): ?>";
+        return $this->phpTag."if ( config('app.env')=='production' ): ?>";
     }
 
     protected function compileEndproduction()
@@ -1086,7 +1151,7 @@ class BladeOne
 
     protected function compileOnce()
     {
-        return $this->phpTag."\$this->startPushOnce(); ?>";
+        return $this->phpTag.'$this->startPushOnce(); ?>';
     }
 
     protected function compileEndonce()
@@ -1097,6 +1162,14 @@ class BladeOne
     protected function compileJson($expression)
     {
         return $this->phpTag."echo json_encode{$expression}; ?>";
+    }
+
+    protected function compileVite($expression)
+    {
+        $expression = $this->stripParentheses($expression);
+        $expression = str_replace("'", '', str_replace('"', '', $expression));
+        return $this->phpTag.'echo vite_assets("' .  $expression . '"); ?>';
+        /* return $this->phpTag.'echo \'<script type="module" src="'. asset('assets/app.js') . '"></script>\'; ?>'; */
     }
 
     protected function compileSwitch($expression)
@@ -1155,6 +1228,43 @@ class BladeOne
     protected function compileEndGuest()
     {
         return '<?php endif; ?>';
+    }
+
+    protected function compileFragment($expression)
+    {
+        $this->lastFragment = trim($expression, "()'\" ");
+
+        return "<?php \$this->startFragment{$expression}; ?>";
+    }
+    
+    protected function compileEndfragment()
+    {
+        return '<?php echo $this->stopFragment(); ?>';
+    }
+
+    public function startFragment($fragment)
+    {
+        if (ob_start()) {
+            $this->fragmentStack[] = $fragment;
+        }
+    }
+
+    public function stopFragment()
+    {
+        if (empty($this->fragmentStack)) {
+            throw new Exception('Cannot end a fragment without first starting one.');
+        }
+
+        $last = array_pop($this->fragmentStack);
+
+        $this->fragments[$last] = ob_get_clean();
+
+        return $this->fragments[$last];
+    }
+
+    public function getFragment($name, $default = null)
+    {
+        return isset($this->fragments[$name]) ? $this->fragments[$name] : $default;
     }
 
  
@@ -1253,6 +1363,28 @@ class BladeOne
         return preg_replace_callback('/(?<!@)@verbatim(.*?)@endverbatim/s', array($this, "callbackStoreVerbatimBlocks"), $value);
     }
 
+    function callbackStoreScriptBlocks ($matches) {
+        if (preg_match('/<script[\s]*src=/x', $matches[0])==1) {
+            return $matches[0];
+        }
+
+        global $phpConverter;
+        $value = $phpConverter->replaceForScriptsInView($matches[0]);
+
+        foreach ($this->compilers as $type) {
+            $value = $this->{"compile{$type}"}($value);
+        }
+
+        $this->scriptBlocks[] = $value;
+        
+        return $this->scriptPlaceholder;
+    }
+
+    protected function storeScriptBlocks($value)
+    {
+        return preg_replace_callback('/(<script[\s\S]*?>[\s\S]*?<\/script[\s\S]*?>)/x', array($this, "callbackStoreScriptBlocks"), $value);
+    }
+
     protected function convertArg($array,$merge=null) {
         if (!is_array($array)) {
             if ($array=='') {
@@ -1284,6 +1416,20 @@ class BladeOne
                     array($this, "callbackRestoreVerbatimBlocks"), $result);
 
         $this->verbatimBlocks = array();
+
+        return $result;
+    }
+
+    function callbackRestoreScriptBlocks() {
+        return array_shift($this->scriptBlocks);
+    }
+
+    protected function restoreScriptBlocks($result)
+    {
+        $result = preg_replace_callback('/'.preg_quote($this->scriptPlaceholder).'/', 
+                    array($this, "callbackRestoreScriptBlocks"), $result);
+
+        $this->scriptBlocks = array();
 
         return $result;
     }
@@ -1494,7 +1640,9 @@ class BladeOne
     }
 
     public function getCompiledFile() {
-        return $this->compiledPath.'/'.sha1($this->fileName);
+        $file = str_replace(_DIR_, '', $this->getTemplateFile());
+        $file = base64url_encode($file);
+        return $this->compiledPath . '/' . $file;
     }
 
     public function getTemplateFile($templateName=null) {
@@ -1502,12 +1650,14 @@ class BladeOne
         $arr = explode('.' , $templateName);
         $c = count($arr);
         if ($c==1) {
-            return $this->templatePath . '/' . $templateName . '.blade.php';
+            $path = $this->templatePath . '/' . $templateName . '.blade.php';
+            return str_replace('//', '/', $path);
         } else {
-            $file=$arr[$c-1];
+            $file = $arr[$c-1];
             array_splice($arr,$c-1,$c-1); // delete the last element
-            $path=implode('/',$arr);
-            return $this->templatePath . '/' .$path.'/'. $file . '.blade.php';
+            $path = implode('/',$arr);
+            $path = $this->templatePath . '/' .$path.'/'. $file . '.blade.php';
+            return str_replace('//', '/', $path);
         }
     }
 
@@ -1686,7 +1836,9 @@ class BladeOne
  
     public function addLoop($data)
     {
-        $length = is_array($data) || $data instanceof Countable ? count($data) : null;
+        $length = is_array($data) || $data instanceof Countable 
+            ? count($data) 
+            : ($data instanceof Collection ? $data->count() : null);
 
         $parent = $this->last($this->loopsStack);
 
@@ -1736,6 +1888,10 @@ class BladeOne
     public function renderEach($view, $data, $iterator, $empty = 'raw|')
     {
         $result = '';
+
+        if ($data instanceof Collection || $data instanceof Paginator) {
+            $data = $data->all();
+        }
 
         // If is actually data in the array, we will loop through the data and append
         // an instance of the partial view to the final result HTML passing in the

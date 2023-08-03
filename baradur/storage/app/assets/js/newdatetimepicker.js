@@ -40,6 +40,14 @@
 						"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
 					]
 				},
+				es:{
+					months: [
+						"Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+					],
+					dayOfWeek: [
+						"Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"
+					]
+				},
 				de:{
 					months:[
 						'Januar','Februar','MÃ¤rz','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'
@@ -86,7 +94,7 @@
 			next:	'xdsoft_next',
 			prev : 'xdsoft_prev',
 			dayOfWeekStart:0,
-			timeHeightInTimePicker:25,
+			timeHeightInTimePicker:25,	
 			timepickerScrollbar:true,
 			scrollMonth:true,
 			scrollTime:true,
@@ -487,8 +495,10 @@
 					var pheight = timeboxparent[0].offsetHeight-2,
 						height = timebox[0].offsetHeight,
 						top = timebox.find('.xdsoft_current').index()*options.timeHeightInTimePicker+1;
-					if( (height-pheight)<top )
-						top = height-pheight;
+					if( (height-pheight)<top ) {
+						//ACA ES DONDE SE MUERE EL SCROLL AUTOMATICO DE LA HORA
+						//top = height-pheight;
+					}
 					timebox.css('marginTop','-'+parseInt(top)+'px');
 				}
 			});

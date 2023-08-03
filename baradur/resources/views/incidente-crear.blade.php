@@ -11,7 +11,7 @@
     <hr class="mb-3 mt-0">
 
 
-    <form action="{{ route('incidentes.store') }}" method="post" enctype="multipart/form-data">
+    <form action="{{ route('incidentes.store') }}" method="post" enctype="multipart/form-data" id="formulario">
     @csrf
 
       <div class="row m-0">
@@ -113,7 +113,7 @@
             <option value="null" @selected($old->grupo=="null")>(sin asignar)</option>
             @foreach ($grupos as $grupo)
               <option value="{{$grupo['codigo']}}" 
-                @selected($old->grupo==$grupo['codigo'] || Auth::user()->grupos->first()->codigo==$grupo['codigo'])>
+                @selected($old->grupo==$grupo['codigo'] || Auth::user()->grupos()->first()->codigo==$grupo['codigo'])>
                 {{$grupo['descripcion']}}
               </option>
             @endforeach
@@ -167,6 +167,24 @@
         </div>
       </div>
 
+      @if(Auth::user()->tipo==1)
+        <div class="col-6 col-lg-12 form-group pt-2 pl-0 pl-md-2 pl-lg-0">
+          <label for="cliente">Sprint asignado</label>
+          <br>
+          <select id="periodo" name="periodo" class="form-control">
+            <option value="" @selected(is_null($data->periodo))>Sin asignar</option>
+            @can ('inc_backlog')
+              <option value="0" @selected(is_numeric($data->periodo) && $data->periodo==="0")>Backlog</option>
+            @endcan
+            @can ('admin_tareas')
+              @foreach ($periodos as $per)
+                <option value="{{$per->codigo}}" @selected($data->periodo==$per->codigo)>{{$per->descripcion}}</option>
+              @endforeach
+            @endcan
+          </select>
+        </div>
+      @endif
+
 
       <button type="submit" id="guardarCambios" class="col-auto btn btn-outline-slate mt-3">Guardar incidente</button>
 
@@ -174,7 +192,7 @@
 
 
     <div class="toast" role="alert" aria-live="assertive" aria-atomic="true" hidden 
-      data-delay="5000" style="position:absolute;top:1rem;right:1rem;opacity:1;">
+      data-delay="5000" style="position:fixed;top:1rem;right:1rem;opacity:1;">
       <div class="toast-header bg-danger" style="height:1rem;">
       </div>
       <div class="toast-body">
@@ -239,6 +257,7 @@
 
     var currentUser = '{{ Auth::user()->Usuario }}';
 
+    var saving = false;
     var start = true;
 
     $('#cliente').on('change', function ()
@@ -342,6 +361,10 @@
 
     $('form').on('submit', function() {
 
+      if (saving) {
+        return;
+      }
+
       /* console.log('CLIENTE: ' +$('#cliente').val());
       console.log('AREA: ' +$('#area').val());
       console.log('MODULE: ' +$('#modulo').val());
@@ -358,6 +381,9 @@
         $('.toast').toast('show');        
         return false;
       }
+
+      saving = true;
+      $('#guardarCambios').addClass('disabled');
 
     });
 

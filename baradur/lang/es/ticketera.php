@@ -10,10 +10,17 @@ return [
     'carga_masiva' => 'Carga masiva de incidentes',
     'tablero_control' => 'Tablero de control',
     'informes' => 'Informes',
+    'periodos' => 'Ver calendario',
+    'periodos_crear' => 'Administrar sprints del calendario',
+    'admin_tareas' => 'Mover incidentes entre sprints',
+    'incidentes_backlog' => 'Agregar incidentes al backlog',
+
+    // Permisos administradores
     'admin_usuarios' => 'Administrar todos los usuarios',
     'admin_externos' => 'Administrar usuarios externos',
     'admin_roles' => 'Administrar roles',
     'admin_clientes' => 'Administrar clientes',
+    'admin_grupos' => 'Administrar grupos',
     'admin_areas' => 'Administrar áreas',
     'admin_modulos' => 'Administrar módulos',
     'admin_tipoincidente' => 'Administrar tipos de incidente',

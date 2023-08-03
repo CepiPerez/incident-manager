@@ -5,11 +5,10 @@ class IncidentFilter {
 
     public static function applyFilters($data, $filtros)
     {
-
         if (isset($filtros['buscar']) && $filtros['buscar']!='')
-        $data = $data->whereRaw("(incidentes.descripcion LIKE '%".$filtros['buscar']."%' 
-            OR incidentes.titulo LIKE '%".$filtros['buscar']."%' 
-            OR incidentes.id = '".$filtros['buscar']. "')");
+            $data = $data->whereRaw("(incidentes.descripcion LIKE '%".$filtros['buscar']."%' 
+                OR incidentes.titulo LIKE '%".$filtros['buscar']."%' 
+                OR incidentes.id = '".$filtros['buscar']. "')");
 
         if (isset($filtros['grupo']))
 			$data = $data->where('grupo', $filtros['grupo']);
@@ -20,6 +19,9 @@ class IncidentFilter {
         if (isset($filtros['cliente']))
             $data = $data->where('cliente', $filtros['cliente']);
 
+        if (isset($filtros['area']))
+            $data = $data->where('area', $filtros['area']);
+
         if (isset($filtros['tipo_incidente']))
             $data = $data->where('tipo_incidente', $filtros['tipo_incidente']);
 
@@ -29,32 +31,41 @@ class IncidentFilter {
         if (isset($filtros['prioridad']))
             $data = $data->where('pr.pid', $filtros['prioridad']);
 
-
         if (isset($filtros['status']))
         {
-            if ($filtros['status']=='abiertos')
-                $data = $data->where('status', '<', 10);
+            if ($filtros['status']=='en_backlog') {
+                $data = $data->whereRaw('(periodo=0 and periodo is not null)');
+            } 
+            else {
+                if ($filtros['status']=='abiertos')
+                    $data = $data->whereRaw('status < 10');
+    
+                elseif ($filtros['status']=='finalizados')
+                    $data = $data->whereRaw('(status=10 OR status=20)');
+    
+                elseif ($filtros['status']=='sin_asignar')
+                    $data = $data->where('status', 0);
+    
+                elseif ($filtros['status']=='en_proceso')
+                    $data = $data->where('status', 1);
+    
+                elseif ($filtros['status']=='en_pausa')
+                    $data = $data->where('status', 5);
+    
+                elseif ($filtros['status']=='bloqueados')
+                    $data = $data->where('status', 6);
+    
+                elseif ($filtros['status']=='resueltos')
+                    $data = $data->where('status', 10);
+    
+                elseif ($filtros['status']=='cerrados')
+                    $data = $data->where('status', 20);
+    
+                elseif ($filtros['status']=='cancelados')
+                    $data = $data->where('status', 50);
 
-            elseif ($filtros['status']=='finalizados')
-                $data = $data->whereRaw('(status=10 OR status=20)');
-
-            elseif ($filtros['status']=='sin_asignar')
-                $data = $data->where('status', 0);
-
-            elseif ($filtros['status']=='en_proceso')
-                $data = $data->whereBetween('status', [1 ,9])->whereNotIn('status', 5);
-
-            elseif ($filtros['status']=='en_pausa')
-                $data = $data->where('status', 5);
-
-            elseif ($filtros['status']=='resueltos')
-                $data = $data->where('status', 10);
-
-            elseif ($filtros['status']=='cancelados')
-                $data = $data->where('status', 50);
-
-            else
-                $data = $data->where('status', 20);
+                $data = $data->whereRaw('(periodo!=0 or periodo is null)');
+            }
         }
 
         if (isset($filtros['orden']))
@@ -121,6 +132,10 @@ class IncidentFilter {
             {
                 $data = $data->where('status', 5);
             }
+            elseif ($filtros['tablero']=='bloqueados')
+            {
+                $data = $data->where('status', 6);
+            }
             elseif ($filtros['tablero']=='resueltos')
             {
                 $data = $data->where('status', 10);
@@ -173,22 +188,70 @@ class IncidentFilter {
             $rol = Auth::user()->roles;
             $perms = $rol? $rol->permisos->pluck('id')->toArray() : array();
             
-            if (in_array(3, $perms))
+            if (in_array(3, $perms)) {
                 $data = $data->where('usuario', Auth::user()->Usuario)
                     ->orWhere('remitente', Auth::user()->Usuario)
                     ->orWhere('asignado', Auth::user()->Usuario);
-            
-            elseif (in_array(4, $perms))
-            {
-                if (Auth::user()->tipo==1)
-                    $data = $data->whereIn('grupo', Auth::user()->grupos->pluck('codigo')->toArray());
-                else
+            }
+            elseif (in_array(4, $perms) ) {
+                if (Auth::user()->tipo==1) {
+                    $grupo = Auth::user()->grupos->pluck('codigo')->toArray();
+                    if (count($grupo)>0) {
+                        $data = $data->whereIn('grupo', Auth::user()->grupos->pluck('codigo')->toArray());
+                    }
+                } else {
                     $data = $data->where('cliente', Auth::user()->cliente);
+                }
+            }
+        }
+
+        if (Auth::user()->rol != 1)
+        {
+            $rol = Auth::user()->roles;
+            $perms = $rol? $rol->permisos->pluck('id')->toArray() : array();
+            
+            if (in_array(3, $perms)) {
+                $data = $data->where('usuario', Auth::user()->Usuario)
+                    ->orWhere('remitente', Auth::user()->Usuario)
+                    ->orWhere('asignado', Auth::user()->Usuario);
+            }
+            elseif (in_array(4, $perms) ) {
+                if (Auth::user()->tipo==1) {
+                    $grupo = Auth::user()->grupos->pluck('codigo')->toArray();
+                    if (count($grupo)>0) {
+                        $data = $data->whereIn('grupo', Auth::user()->grupos->pluck('codigo')->toArray());
+                    }
+                } else {
+                    $data = $data->where('cliente', Auth::user()->cliente);
+                }
             }
         }
 
         return $data;
 
+    }
+
+    public static function getUnnasigned()
+    {
+        $data = Incidente::where('status', 0);
+
+        if (Auth::user()->rol != 1)
+        {
+            $rol = Auth::user()->roles;
+            $perms = $rol? $rol->permisos->pluck('id')->toArray() : array();
+            
+            if (in_array(3, $perms)) {
+                $data = $data->where('asignado', Auth::user()->Usuario);
+            }
+            elseif (in_array(4, $perms) ) {
+                $grupo = Auth::user()->grupos->pluck('codigo')->toArray();
+                if (count($grupo)>0) {
+                    $data = $data->whereIn('grupo', Auth::user()->grupos->pluck('codigo')->toArray());
+                }
+            }
+        }
+
+        return $data->count();
     }
 
 }

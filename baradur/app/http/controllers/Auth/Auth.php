@@ -88,15 +88,20 @@ class Auth extends Controller
             $_SESSION['user'] = $user;
             self::$_currentUser = $user;
 
-            if (isset($_SESSION['_requestedRoute']))
+            /* if (isset($_SESSION['_requestedRoute']))
             {
                 $res = $_SESSION['_requestedRoute'];
                 unset($_SESSION['_requestedRoute']);
-                $res = str_replace(env('HOME'), '', $res);
+                $res = str_replace(config('app.url'), '', $res);
+                //dd("RES", $res);
                 return redirect($res);
-            }
-            else
-                return redirect(env('HOME'));
+            } */
+            
+            return Auth::user()->tipo==1 ? to_route('tareas') : to_route('incidentes.index');
+            
+            //return redirect(config('app.url')  
+            //    . '/incidentes?orden=&cliente=todos&grupo=todos&usuario='
+            //    . Auth::user()->Usuario .'&tipo_incidente=todos&modulo=todos&status=abiertos&prioridad=todos');
         }
 
     }

@@ -2,7 +2,11 @@
 
 class IncidentesController extends Controller
 {
-
+	# Esta function la hice para agregar los tiempos a los
+	# incidentes, ya que esas columnas fueron agregadas
+	# luego y necesitaba llenarlas con los datos.
+	# Ya no sirve, pero la dejo por si en algún momento
+	# necesitamos aplicar algun otro cambio
 	public function test()
 	{
 		foreach (Incidente::with('avances')->orderBy('id', 'desc')->get() as $i)
@@ -47,16 +51,48 @@ class IncidentesController extends Controller
 
 	}
 
+
+	public function tareas()
+	{
+		$periodo = PeriodoController::getCurrentSprint();
+
+		$data = Incidente::selectRaw('incidentes.*, clientes.descripcion as cliente_desc, 
+				status_incidentes.descripcion as status_desc, pr.pid, pr.pdesc')
+		 	->leftJoin('status_incidentes', 'status_incidentes.codigo', '=', 'incidentes.status')
+		 	->leftJoin('clientes', 'clientes.codigo', '=', 'incidentes.cliente')
+			->joinSub('SELECT id as pid, descripcion as pdesc, minimo, maximo from prioridades', 'pr',
+				'incidentes.prioridad', 'BETWEEN', 'minimo AND maximo', 'LEFT')
+			->where('status', '<', 10)
+			->where(function ($query) use ($periodo) {
+				$query = $query->whereNull('periodo');
+				if ($periodo) $query = $query->orWhere('periodo', $periodo->codigo);
+				return $query;
+			})
+			->where('asignado', Auth::user()->Usuario)
+			->orderBy('id', 'desc')
+			->get();
+
+		//dd($incidentes->toArray());
+
+		//$usuarios = User::activos()->where('tipo', 1)->get()->pluck('nombre', 'Usuario')->toArray();
+		//$grupos = Grupo::orderBy('descripcion')->get()->toArray();
+
+		$sin_asignar = IncidentFilter::getUnnasigned();
+		$dentro = $periodo ? $data->where('periodo', $periodo->codigo) : $data->whereNotNull('periodo');
+		$fuera = $periodo ? $data->where('periodo', '!=', $periodo->codigo) : $data;
+
+		return view('tareas', compact('sin_asignar', 'periodo', 'dentro', 'fuera'));
+	}
 	
 	public function index()
 	{
-
-		/* $test = 10;
-		dd(Incidente::withCount(['avances as resoluciones' => function ($query) {
-			$query->where('tipo_avance', 10);
-		}, 'avances' => function ($query) use($test) {
-			$query->where('tipo_avance', $test);
-		}])->take(2)->get()); */
+		/* $rol = Auth::user()->roles;
+        $perm = $rol? $rol->permisos->pluck('id')->toArray() : array();
+        
+		dd($perm);
+        foreach ($perm as $p) {
+            if ($p > 100) return true;
+        } */
 
 		/* dump(Mail::to('cepiperez@gmail.com')
 			->subject('Notificacion de prueba')
@@ -64,71 +100,67 @@ class IncidentesController extends Controller
 
 		/* $res = DB::table('baradur_queue')->first();
 		dd(unserialize($res->content)); */
-	
-		$filtros = SessionFilters::getFilters(request(), 'filtros', 
-			['grupo', 'usuario', 'cliente', 'status', 'tipo_incidente', 'modulo', 'prioridad', 'orden', 'buscar', 'p']);
-
-		//setcookie(env('APP_NAME').'_filters', json_encode($filtros), time()+172800, '/'.env('PUBLIC_FOLDER'), $_SERVER["APP_URL"], false);
+			
+		$filtros = SessionFilters::getFilters('incidentes');
 
 		$data = Incidente::with('inc_asignado')
 			->selectRaw('incidentes.*, clientes.descripcion as cliente_desc, 
 				status_incidentes.descripcion as status_desc, pr.pid, pr.pdesc')
-		 	->leftJoin('status_incidentes', 'codigo', '=', 'status')
-		 	->leftJoin('clientes', 'codigo', '=', 'cliente')
+		 	->leftJoin('status_incidentes', 'status_incidentes.codigo', '=', 'incidentes.status')
+		 	->leftJoin('clientes', 'clientes.codigo', '=', 'incidentes.cliente')
 			->joinSub('SELECT id as pid, descripcion as pdesc, minimo, maximo from prioridades', 'pr',
 				'incidentes.prioridad', 'BETWEEN', 'minimo AND maximo', 'LEFT');
 
-		
 		$data = IncidentFilter::applyFilters($data, $filtros);
+
+		//dd($data->toPlainSql());
 
         $data = $data->paginate(20);
 
 		$usuarios = User::activos()->where('tipo', 1)->get()->pluck('nombre', 'Usuario')->toArray();
-		$grupos = Grupo::with('miembros:Usuario,nombre')->orderBy('descripcion')->get()->toArray();
+		$grupos = Grupo::/* with('miembros:Usuario,nombre')-> */orderBy('descripcion')->get()->toArray();
 
 		$sin_asignar = 0;
+		$areas = null;
 		$tipo_incidente = null;
 		$modulos = null;
 		$clientes = null;
 
 		if (Auth::user()->tipo==1)
 		{
-			$sin_asignar = count($data->where('status', 0));
+			$sin_asignar = IncidentFilter::getUnnasigned();
 			$clientes = Cliente::activos()->get()->toArray();
+			$areas = Area::orderBy('descripcion')->get();
 			$tipo_incidente = TipoIncidente::orderBy('descripcion')->get();
 			$modulos = Modulo::orderBy('descripcion')->get();
 		}
 
-		//exit();
 		return view('incidentes', compact('data', 'clientes', 'usuarios', 'grupos',
-			'tipo_incidente', 'modulos', 'filtros', 'sin_asignar'));
+			'areas', 'tipo_incidente', 'modulos', 'filtros', 'sin_asignar'));
 	}
 
 	public function create()
 	{
-		//$usuarios = User::activos()->where('tipo', 1)->pluck('nombre', 'Usuario')->toArray();
+		$this->authorize('crear_inc');
+
 		$grupos = Grupo::with('miembros:Usuario,nombre')->orderBy('descripcion')->get()->toArray();
 		$tipo_incidente = TipoIncidente::orderBy('descripcion')->get();
 		$modulos = Modulo::orderBy('descripcion')->get();
-		//$status = StatusIncidente::whereBetween('codigo', [1,19])->get();
 
-		if (Auth::user()->tipo==0)
-		{
+		if (Auth::user()->tipo==0) {
 			$cliente = Cliente::with('areas')->where('codigo', Auth::user()->cliente)->get()->toArray();
-		}
-		else
-		{
+		} else {
 			$cliente = Cliente::with(['areas', 'usuarios'])->where('activo', 1)->orderBy('descripcion')->get()->toArray();
 		}
-		//dd($grupos); exit();
-		//header('Content-type: text/plain; charset=utf-8');
 
-		return view('incidente-crear', compact('cliente', 'tipo_incidente', /* 'status', */ 'modulos', 'grupos'));
+		$periodos = Periodo::whereDate('hasta', '>', now())->orderBy('desde')->get();
+
+		return view('incidente-crear', compact('cliente', 'tipo_incidente', 'periodos', 'modulos', 'grupos'));
 
 	}
 
 	public function store(Request $request)
-	{	
+	{
 		$request->validate([
 			'titulo' => 'required'
 		]);
@@ -145,21 +177,21 @@ class IncidentesController extends Controller
 		$inc['descripcion'] = IncidentService::acentos($request->descripcion);
 		$inc['menu'] = '';
 		$inc['usuario'] = Auth::user()->Usuario;
-		$inc['remitente'] = Auth::user()->tipo==1?
-			($request->remitente!="null"? $request->remitente : Auth::user()->Usuario) : Auth::user()->Usuario;
+		$inc['remitente'] = Auth::user()->tipo==1
+			? ($request->remitente!="null"? $request->remitente : Auth::user()->Usuario) 
+			: Auth::user()->Usuario;
 		$inc['punto_menu'] = 0;
 		$inc['mail'] = '';
+		$inc['periodo'] = null;
 		$inc['tel'] = '';
 		$inc['status'] = Auth::user()->tipo==1? ($request->asignado!="null"? 1 : 0) : 0;
 		$inc['grupo'] = Auth::user()->tipo==1? ($request->grupo!="null"? $request->grupo : 0 ): 0;
 		$inc['asignado'] = Auth::user()->tipo==1? ($request->asignado!="null"? $request->asignado : null) : null;
 		$inc['fecha_ingreso'] = Auth::user()->tipo==1? Carbon::parse($request->fecha) : now();
-		
+
 		$inc['prioridad'] = IncidentService::calcularPrioridad($request->cliente, $request->modulo, $request->tipo_incidente, $inc);
 		$inc['sla'] = TipoIncidente::find($request->tipo_incidente)->sla;
 		
-		//dd($inc); exit();
-
 		if ($inc['grupo']==0)
 		{
 			list($auto_group, $auto_user, $auto_status) = IncidentService::buscarAsignacion($inc);
@@ -168,56 +200,66 @@ class IncidentesController extends Controller
 			$inc['status'] = $auto_status;
 		}
 		
-		
-		//dd($inc); exit();
-
-
 		$res = Incidente::create($inc);
 
 		if (!$res)
 		{
 			return back()->with('error', 'Hubo un error al guardar el incidente');
 		}
-		else
+
+		if ($request->hasFile('archivo'))// && $request->file('archivo')->isValid())
 		{
-			if ($request->hasFile('archivo'))// && $request->file('archivo')->isValid())
+			foreach ($request->file('archivo') as $archivo)
 			{
-				foreach ($request->file('archivo') as $archivo)
-				{
-					$name = strtolower($archivo->name());
-					$path = 'archivos/'.(int)$res->id.'/0';
-					$archivo->storeAs($path, $name);
-		
-					$adjunto = new AdjuntosIncidente;
-					$adjunto->incidente = $res->id;
-					$adjunto->avance = 0;
-					$adjunto->adjunto = $name;
-					$adjunto->save();
-				}
-
+				$name = strtolower($archivo->name());
+				$path = 'archivos/'.(int)$res->id.'/0';
+				$archivo->storeAs($path, $name);
+	
+				$adjunto = new AdjuntosIncidente;
+				$adjunto->incidente = $res->id;
+				$adjunto->avance = 0;
+				$adjunto->adjunto = $name;
+				$adjunto->save();
 			}
-
-			return to_route('incidentes.index')->with('message', 'Se generó el incidente correctamente');
 		}
+
+
+		// Creamos un avance (sin guardar) para enviar la notificacion
+		$avance = new Avance([
+			'incidente' => (int)$res->id,
+			'tipo_avance' => 101,
+			'descripcion' => $inc['descripcion'],
+			'destino' => $inc['asignado'],
+			'fecha_ingreso' => $inc['fecha_ingreso'],
+			'asignado_prev' => 0,
+			'grupo_prev' => 0,
+			'status_prev' => 0
+		]);
+
+		Correo::verificar($avance);
+
+		return to_route('incidentes.index')->with('message', 'Se generó el incidente #'.str_pad($res->id, 7, '0', STR_PAD_LEFT));
+
 	}
 
 	public function show($id)
 	{
+		$prioridades = Prioridad::selectRaw('id as pid, descripcion as pdesc, minimo, maximo');
+
 		$data = Incidente::with(['inc_cliente', 'tipo_incidente', 'estado', 'avances'])
 			->selectRaw('incidentes.*, pr.pid, pr.pdesc, grupos.descripcion as grupo_desc')
 			->leftJoin('grupos', 'codigo', '=', 'grupo' )
-			->joinSub('SELECT id as pid, descripcion as pdesc, minimo, maximo from prioridades', 'pr',
-			'incidentes.prioridad', 'BETWEEN', 'minimo AND maximo', 'LEFT')
-			->findOrFail($id);
+			->leftJoinSub($prioridades, 'pr', function ($join) {
+				$join->on('incidentes.prioridad', '>=', 'pr.minimo');
+				$join->on('incidentes.prioridad', '<=', 'pr.maximo');
+			})->findOrFail($id);
+
 
 		$this->authorize('ver_inc', $data);
 
-		if (Auth::user()->tipo==0)
-		{
+		if (Auth::user()->tipo==0) {
 			$cliente = Cliente::with('areas')->where('codigo', Auth::user()->cliente)->get()->toArray();
-		}
-		else
-		{
+		} else {
 			$cliente = Cliente::with(['areas', 'usuarios'])->where('activo', 1)->orderBy('descripcion')->get()->toArray();
 		}
 		
@@ -226,30 +268,62 @@ class IncidentesController extends Controller
 		$modulos = Modulo::orderBy('descripcion')->get();
 		$grupos = Grupo::with('miembros:Usuario,nombre')->orderBy('descripcion')->get()->toArray();
 		
-		$tipo_avance = $data->status->codigo==10? 
-			TipoAvance::whereIn('codigo', [6, 20])->get() :
-			(
-				$tipo_avance = $data->status->codigo==5? 
-					TipoAvance::where('codigo', 7)->get():
-					TipoAvance::whereNotIn('codigo', [6, 7, 30, 100, 101])->get()
-			);
 
+		if ($data->periodo==0 && $data->periodo!==null) {
+			$tipo_avance = TipoAvance::whereNotIn('codigo', [3, 5, 6, 7, 10, 20, 50, 101])->get();
+		} elseif ($data->status==10) {
+			$tipo_avance = TipoAvance::whereIn('codigo', [6, 20])->get();
+		} elseif ($data->status==5) {
+			$tipo_avance = TipoAvance::where('codigo', 7)->get();
+		} elseif ($data->status==6) {
+			$tipo_avance = TipoAvance::whereNotIn('codigo', [3, 5, 6, 10, 20, 101])->get();
+		} elseif ($data->status==0 || $data->status==1) {
+			$tipo_avance = TipoAvance::whereNotIn('codigo', [6, 7, 20, 101])->get();
+		} else {
+			$tipo_avance = TipoAvance::whereNotIn('codigo', [6, 7, 30, 100, 101])->get();
+		}
+
+		$data->tieneEstimacion = false;
+		foreach ($data->avances as $avance) {
+			if ($avance->tipo_avance==8) {
+				$data->tieneEstimacion = true;
+
+				$estimado = unserialize($avance->descripcion);
+
+				$tipo_avance = $tipo_avance->where('codigo', '!=', 8);
+
+				$avance->descripcion = 'Tiempo estimado: ' . implode(' ', $estimado);
+			}
+		}
 
 		$data->adjunto = AdjuntosIncidente::where('incidente', $id)->where('avance', 0)->get();
 
 		$tiempos = IncidentService::calcularHoras($data);
 		$data->horas = $tiempos['total'];
 
-		//dd(Utils::sla_expiration($data->horas, $data->sla));
-		//dd($data->avances); exit();
+
+		$rol = Auth::user()->roles;
+        $perm = $rol? $rol->permisos->pluck('id')->toArray() : array();
+
+		$periodos = Periodo::whereDate('hasta', '>=', now());
+		if (intval($data->periodo)>0) {
+			$periodos = $periodos->orWhere('codigo', $data->periodo);
+		}
+		$periodos = $periodos->orderBy('desde')->get();
+
+		$vencido = false;
+		if ($data->periodo!==0 && $data->periodo!==null) {
+			$current = $periodos->where('codigo', $data->periodo)->first()->hasta;
+			$vencido = Carbon::parse($current)->endOfDay()->timestamp < now()->timestamp;
+		}
 
 		return view('incidente-editar', compact('data', /* 'adjuntos', */ 'cliente', 'avances', 
-				'modulos', 'tipo_incidente','tipo_avance', 'usuarios', 'grupos'));
+				'modulos', 'tipo_incidente','tipo_avance', 'usuarios', 'grupos', 'periodos', 'vencido'));
 	}
 
 	public function update(Request $request, $id)
 	{
-		//dd($request->all()); exit();
+		//dd($request);
 
 		$request->validate([
 			'titulo' => 'required'
@@ -258,25 +332,72 @@ class IncidentesController extends Controller
 		$inc = Incidente::find($id);
 
 		$newrequest = $request->all();
-		$newrequest['fecha_ingreso'] = Auth::user()->tipo==1? Carbon::parse($request->fecha) : Carbon::parse($inc->fecha_ingreso);
+		$newrequest['fecha_ingreso'] = Auth::user()->tipo==1? Carbon::parse($request->fecha_ingreso) : Carbon::parse($inc->fecha_ingreso);
 		$newrequest['titulo'] = IncidentService::acentos($newrequest['titulo']);
 		$newrequest['descripcion'] = IncidentService::acentos($newrequest['descripcion']);
-
 		$newrequest['prioridad'] = IncidentService::calcularPrioridad($request->cliente, $request->modulo, $request->tipo_incidente, (array)$inc);
 		$newrequest['sla'] = TipoIncidente::find($request->tipo_incidente)->sla;
+		$newrequest['periodo'] = $request->periodo=="" ? null : $request->periodo;
+		
+		$sprintPrevio = $inc->periodo;
+
+		// Primero verificamos que el usuario tenga permisos
+		// para mover el incidente a distintos sprints
+		if (($sprintPrevio!=$newrequest['periodo']) && (intval($newrequest['periodo']) > 0)) {
+			if (Gate::denies('admin_tareas')) {
+				return back()->with('error', 'No tiene permisos para asignar el incidente a un sprint');
+			}
+		}
 
 		$res = $inc->update($newrequest);
-
-		if (!$res)
+		
+		if (!$res) {
 			return back()->with('error', 'Hubo un error al guardar los cambios');
-		else
-			return back()->with('message', 'Se guardaron los cambios');
+		}
+
+		// Si hubo un cambio en el sprint del incidente 
+		// modificamos el historial de sprints
+		if ($sprintPrevio != $inc->periodo) {
+
+			$current = PeriodoController::getCurrentSprint();
+			
+			// El incidente estaba asignado al sprint en curso
+			// debido a que sigue abierto lo eliminamos del historial
+			if ($current->codigo == $sprintPrevio) {
+				HistorialPeriodo::where('incidente', $inc->id)
+					->where('periodo', $sprintPrevio)
+					->delete();
+			}
+
+			// Agregamos el incidente al historial de sprint nuevo 
+			// omitiendo NULL (sin asignar) y 0 (backlog)
+			if ($inc->periodo!=null && $inc->periodo!=0) {
+
+				// Eliminamos antes de agregar
+				// (esto se agrega para evitar duplicados cuando
+				// se cambian las fechas de un sprint ya que
+				// un incidente podría quedar desactualizado)
+				HistorialPeriodo::where('incidente', $inc->id)
+					->where('periodo', $inc->periodo)
+					->delete();
+
+				HistorialPeriodo::create([
+					'incidente' => $inc->id,
+					'periodo' => $inc->periodo,
+					'grupo' => $inc->grupo,
+					'asignado' => $inc->asignado,
+					'status' => $inc->status
+				]);
+			}
+		}
+
+		return back()->with('message', 'Se guardaron los cambios');
 
 	}
 
 	public function guardarAvance(Request $request, $id)
 	{
-		//dd($request->all()); dd($id); exit();
+		//dump($request->all()); dd($id); exit();
 		//dd(Auth::user()->grupos); exit();
 
 		$inc = Incidente::find($id);
@@ -297,9 +418,9 @@ class IncidentesController extends Controller
 		$avance = array();
 		$avance['incidente'] = (int)$id;
 		$avance['tipo_avance'] = $tipo_avance;
-		$avance['descripcion'] = $request->descripcion;
+		$avance['descripcion'] =  $tipo_avance==8? serialize([$request->tiempo_estimado, $request->tiempo_estimado_tipo]) : $request->descripcion;
 		$avance['usuario'] = Auth::user()->Usuario;
-		$avance['fecha_ingreso'] = date('Y-m-d H:i');
+		$avance['fecha_ingreso'] = $tipo_avance==10? Carbon::parse($request->fecha_avance) : date('Y-m-d H:i');
 		$avance['asignado_prev'] = $inc->asignado;
 		$avance['grupo_prev'] = $inc->grupo;
 		$avance['status_prev'] = $inc->status;
@@ -310,12 +431,10 @@ class IncidentesController extends Controller
 			$avance['grupo_destino'] = $request->grupo;
 		}
 
-		
 		$res = Avance::create($avance);
 
 		if ($res)
 		{
-			
 			if ($request->hasFile('archivo'))
 			{
 				foreach ($request->file('archivo') as $archivo)
@@ -330,55 +449,10 @@ class IncidentesController extends Controller
 					$adjunto->adjunto = $name;
 					$adjunto->save();
 				}
-
 			}
 
-
-			if ($tipo_avance==1) # Incidente tomado
-			{
-				if ($inc->status==0) # Si el estado es 'sin asignar' se cambia al estado 'en proceso'
-					$inc->status = 1;
-
-				$inc->grupo =  Auth::user()->grupos->first()->codigo;
-				$inc->asignado = Auth::user()->Usuario;
-			}
-
-			elseif ($tipo_avance==2) # Incidente derivado
-			{
-				if ($inc->status==0 && $request->usuario!="null") # Si el estado es 'sin asignar' se cambia al estado 'en proceso'
-					$inc->status = 1;
-
-				$inc->grupo = $request->grupo;
-				$inc->asignado = $request->usuario!="null"? $request->usuario : null;
-			}
-				
-			elseif ($tipo_avance==5) # A la espera de accion del usuario
-				$inc->status = 5;
-
-			elseif ($tipo_avance==6) # Reapertura del incidente
-				$inc->status = 1;
-
-			elseif ($tipo_avance==10) # Incidente resuelto
-				$inc->status = 10;
-
-			elseif ($tipo_avance==20) # Incidente cerrado
-				$inc->status = 20;
-
-			elseif ($tipo_avance==50) # Incidente cancelado
-				$inc->status = 50;
-
-			elseif ($tipo_avance==30 && $inc->status==5) # Nota del usuario (quitar pausa)
-				$inc->status = 1;
-
-			elseif ($tipo_avance==7) # Incidente retomado (quitar pausa)
-				$inc->status = 1;
-
-			# Si se resuelve guardamos la fecha
-			# Si se cierra sin resolver usamos esa fecha
-			//if ($tipo_avance==10 || ($tipo_avance==20 && $inc->status!=10))
-			//	$inc->fecha_resolucion = date('Y-m-d H:i');
-
-			//dump($inc);
+			// Aplicamos el avance al incidente
+			$inc = IncidentService::aplicarAvance($inc, $tipo_avance, $request);
 
 			# Guardamos los tiempos del incidente
 			$tiempos = IncidentService::calcularHoras($inc);
@@ -403,13 +477,29 @@ class IncidentesController extends Controller
 				$inc->horas = null;
 				$inc->pausa = null;
 			}
-
-			//dd($inc);
+			
 			$inc->save();
 
-			//$envio = Correo::verificar($res);
-			
 
+			// Actualizamos el incidente en el historial de sprints
+			// solamente para el sprint en curso
+			/* $current = PeriodoController::getCurrentSprint();
+
+			if ($inc->periodo!=null && $inc->periodo!=0 && $current) {
+				$sinc = HistorialPeriodo::where('incidente', $inc->id)->where('periodo', $current->codigo)->first();
+
+				if ($sinc) {
+					$sinc->grupo = $inc->grupo;
+					$sinc->asignado = $inc->asignado;
+					$sinc->status = $inc->status;
+					$sinc->save();
+				}
+			} */
+
+
+			// Enviamos la notificacion por correo
+			$envio = Correo::verificar($res);
+			
 			return back()->with('message', 'Se guardó el avance correctamente');
 		}
 		else
@@ -420,48 +510,6 @@ class IncidentesController extends Controller
 
 	}
 
-	/* public function guardarNota(Request $request, $id)
-	{
-		//dd($request);
-		$avance = array();
-		$avance['incidente'] = (int)$id;
-		$avance['tipo_avance'] = Auth::user()->tipo==0? 30 : 100;
-		$avance['descripcion'] = $request->descripcion_nota;
-		$avance['usuario'] = Auth::user()->Usuario;
-		$avance['fecha_ingreso'] = date('Y-m-d H:i');
-		
-		$res = Avance::create($avance);
-
-		if ($res)
-		{
-			if ($request->hasFile('archivonota'))
-			{
-				if ($request->file('archivonota')->isValid())
-				{
-					$name = strtolower($request->file('archivonota')->name());
-					$path = 'archivos/'.(int)$id.'/'.$res->id;
-					$request->file('archivonota')->storeAs($path, $name);
-		
-					$adjunto = new AdjuntosIncidente;
-					$adjunto->incidente = $id;
-					$adjunto->avance = $res->id;
-					$adjunto->adjunto = $name;
-					$adjunto->save();
-				}
-			}
-
-			//$inc = Incidente::find($id);
-
-			return back()->with('message', 'Se guardó la correctamente');
-		}
-		else
-		{
-			return back()->with('error', 'Hubo un error al guardar la nota');
-		}
-
-
-	} */
-
 	public function descargarAdjunto($incidente, $avance, $archivo)
 	{
 		Storage::download("archivos/$incidente/$avance/$archivo");
@@ -471,42 +519,56 @@ class IncidentesController extends Controller
 	{
 		$av = Avance::where('incidente', (int)$id)->where('id', (int)$avance)->first();
 
-		$inc = Incidente::find((int)$id);
+		$actualizarInc = in_array($av->tipo_avance, [1, 2, 3, 5, 6, 7, 10, 20, 50]);
 
-		if ($av->tipo_avance==1 || $av->tipo_avance==2)
-		{
-			$inc->asignado = $av->asignado_prev? $av->asignado_prev : null;
-			$inc->grupo = $av->grupo_prev? $av->grupo_prev : null;
+		$inc = $actualizarInc ? Incidente::find((int)$id) : null;
+
+		if ($actualizarInc) {
+			$inc = IncidentService::deshacerAvance($inc, $av);
+			
+			$tiempos = IncidentService::calcularHoras($inc);
+	
+			if ($inc->status==10 || $inc->status==20){
+				$inc->horas = $tiempos['total'];
+				$inc->pausa = $tiempos['pause'];
+			}
+			elseif ($tiempos['pause']!=0 && $inc->status!=5) {
+				$inc->horas = null;
+				$inc->pausa = $tiempos['pause'];
+			}
+			else {
+				$inc->horas = null;
+				$inc->pausa = null;
+			}
 		}
 
-		if ($av->status_prev)
-			$inc->status = $av->status_prev;
-
-		
-		$tiempos = IncidentService::calcularHoras($inc);
-
-		if ($inc->status==10 || $inc->status==20)
-		{
-			$inc->horas = $tiempos['total'];
-			$inc->pausa = $tiempos['pause'];
-		}
-		elseif ($tiempos['pause']!=0 && $inc->status!=5)
-		{
-			$inc->horas = null;
-			$inc->pausa = $tiempos['pause'];
-		}
-		else
-		{
-			$inc->horas = null;
-			$inc->pausa = null;
-		}
-				
 		if ($av->delete())
 		{
-			//ddd($inc->_getOriginalKeys());
-			$inc->save();
-			AdjuntosIncidente::where('incidente', (int)$id)->where('avance', (int)$avance)->delete();
-			Cache::store('file')->setDirectory(_DIR_.'/storage/app/public/archivos/'.(int)$id.'/'.(int)$avance)->flush();
+			if ($actualizarInc) {
+				$inc->save();
+	
+				// Borramos los adjuntos del avance en la BD
+				AdjuntosIncidente::where('incidente', (int)$id)->where('avance', (int)$avance)->delete();
+	
+				// Borramos los archivos fisicos del avance
+				Cache::store('file')->setDirectory(_DIR_.'/storage/app/public/archivos/'.(int)$id.'/'.(int)$avance)->flush();
+	
+				// Actualizamos el incidente en el historial de sprints
+				// solamente para el sprint en curso
+				/* if ($inc->periodo!=null && $inc->periodo!=0) {
+					$current = PeriodoController::getCurrentSprint();
+	
+					$sinc = HistorialPeriodo::where('incidente', $inc->id)->where('periodo', $current->codigo)->first();
+	
+					if ($sinc) {
+						$sinc->grupo = $inc->grupo;
+						$sinc->asignado = $inc->asignado;
+						$sinc->status = $inc->status;
+						$sinc->save();
+					}
+				} */
+			}
+
 			return back()->with('message', 'Se eliminó el avance correctamente');
 		}
 		else

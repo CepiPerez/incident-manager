@@ -45,8 +45,10 @@
             <td class="d-none d-sm-table-cell text-center">{{$user->tipo==1? 'Interno':'Externo'}}</td>
             <td class="d-none d-md-table-cell text-center">{{$user->roles->descripcion}}</td>
             <td class="text-right no-pointer" style="word-spacing:.5rem;"> 
+                @if ((Auth::user()->rol==1) || $user->tipo==0 || 
+                ($user->rol!=1 && $user->tipo==1 && in_array(101, $permisos)))
                 <a href="{{ route('usuarios.edit', $user->idT) }}" class="ri-lg ri-edit-line"></a>
-
+                
                 <i onclick="habilitarUsuario('{{ route('usuarios.habilitar', $user->idT) }}')" 
                   class="ri-lg @if($user->activo==1) ri-lock-line @else ri-lock-unlock-line @endif"></i>
 
@@ -57,6 +59,7 @@
                     document.getElementById('form-delete').submit()):''"
                   @endif
                 ></a>
+                @endif
             </td>
           </tr>
           @endforeach

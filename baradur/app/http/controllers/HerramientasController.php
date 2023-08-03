@@ -10,12 +10,11 @@ class HerramientasController extends Controller
 		return view('herramientas');
 	}
 
+	# Crear avances para resolver los incidentes
 	public function resolver(Request $request)
 	{
 		if ($request->fecha_resolucion)
 		{
-
-			# Crear avances para resolver los incidentes
 			$fin = date('Y-m-d H:i', strtotime('+1 day', strtotime($request->fecha_resolucion)));
 			$convert = Incidente::where('fecha_ingreso', '<', $fin)
 				->where('status', 1)
@@ -47,13 +46,12 @@ class HerramientasController extends Controller
 		}
 	}
 
+	# Crear avances para cerrar los incidentes
+	# Solamente cierra los incidentes resueltos
 	public function cerrar(Request $request)
-	{
-		
+	{		
 		if ($request->fecha_cierre)
 		{
-
-			# Crear avances para cerrar los incidentes
 			$fin = date('Y-m-d H:i', strtotime('+1 day', strtotime($request->fecha_cierre)));
 			$convert = Incidente::where('fecha_ingreso', '<', $fin)
 				->where('status', 10)
@@ -84,4 +82,35 @@ class HerramientasController extends Controller
 			return back()->with('error', 'Hubo un error al procesar los datos');
 		}
 	}
+
+
+	public function buscarIncidente()
+	{
+		$current = request()->incident;
+		$search = request()->search;
+
+		$data = Incidente::selectRaw("incidentes.id")
+			->where('status', '<', 10)
+			->where('id', 'like', "%$search%")
+			->where('id', '!=', "$current")
+			->orderByDesc('id')
+			->paginate(20);
+
+		$response = [];
+		$response[] = [
+			'id' => 0, 
+			'text' => 'Sin dependencia'
+		];
+
+		foreach($data as $r){
+			$response[] = [
+				"id"    => $r->id,
+				"text"  => 'Incidente ' . str_pad($r->id, 7, '0', STR_PAD_LEFT)
+			];
+		}
+
+		return response()->json($response, 200); 
+	}
+
+
 }

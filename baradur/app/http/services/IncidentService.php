@@ -231,4 +231,76 @@ class IncidentService
 
 	}
 
+	public static function aplicarAvance($inc, $tipo_avance, $request)
+	{
+		if ($tipo_avance==1) # Incidente tomado
+		{
+			if ($inc->status==0) # Si el estado es 'sin asignar' se cambia al estado 'en proceso'
+				$inc->status = 1;
+
+			$inc->grupo =  Auth::user()->grupos->first()->codigo;
+			$inc->asignado = Auth::user()->Usuario;
+		}
+
+		elseif ($tipo_avance==2) # Incidente derivado
+		{
+			if ($inc->status==0 && $request->usuario!="null") # Si el estado es 'sin asignar' se cambia al estado 'en proceso'
+				$inc->status = 1;
+
+			if ($request->usuario=="null") # Si se asigna a un grupo sin usuario se pasa a 'sin asignar' el estado
+				$inc->status = 0;
+
+			$inc->grupo = $request->grupo;
+			$inc->asignado = $request->usuario!="null"? $request->usuario : null;
+		}
+
+		elseif ($tipo_avance==3) # Incidente bloqueado
+			$inc->status = 6;
+
+		elseif ($tipo_avance==5) # A la espera de accion del usuario
+			$inc->status = 5;
+
+		elseif ($tipo_avance==6) # Reapertura del incidente
+			$inc->status = 1;
+
+		elseif ($tipo_avance==10) # Incidente resuelto
+			$inc->status = 10;
+
+		elseif ($tipo_avance==20) # Incidente cerrado
+			$inc->status = 20;
+
+		elseif ($tipo_avance==50) # Incidente cancelado
+			$inc->status = 50;
+
+		elseif ($tipo_avance==30 && $inc->status==5) # Nota del usuario (quitar pausa)
+			$inc->status = 1;
+
+		elseif ($tipo_avance==7) # Incidente retomado (quitar pausa o bloqueo)
+			$inc->status = 1;
+
+
+		if (!$inc->grupo) {
+			$inc->grupo =  Auth::user()->grupos->first()->codigo;
+		}
+
+		if (!$inc->asignado) {
+			$inc->asignado = Auth::user()->Usuario;
+		}
+
+		return $inc;
+	}
+
+	public static function deshacerAvance($inc, $avance)
+	{
+		if ($avance->tipo_avance==1 || $avance->tipo_avance==2) {
+			$inc->asignado = $avance->asignado_prev? $avance->asignado_prev : null;
+			$inc->grupo = $avance->grupo_prev? $avance->grupo_prev : null;
+		}
+
+		$inc->status = $avance->status_prev;
+
+		return $inc;
+	}
+
+
 }

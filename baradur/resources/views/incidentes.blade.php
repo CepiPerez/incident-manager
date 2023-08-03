@@ -64,11 +64,7 @@
                                     {{$cli['descripcion']}}</option>
                                 @endforeach
                             </select>
-                        </div> 
-                    </div>
-
-
-                    <div class="row">
+                        </div>
                         <div class="col-6 form-group">
                             <label for="grupo">Grupo asignado</label>
                             <select class="form-control" id="grupo" name="grupo">
@@ -78,7 +74,10 @@
                                 @endforeach
                             </select>
                         </div>  
-    
+                    </div>
+
+
+                    <div class="row">    
                         <div class="col-6 form-group">
                             <label for="usuario">Usuario asignado</label>
                             <select class="form-control" id="usuario" name="usuario">
@@ -86,6 +85,16 @@
                                 @foreach ($usuarios as $key => $val)
                                 <option value="{{$key}}" @selected($filtros['usuario']==$key)>{{$val}}</option>
                                 @endforeach --}}
+                            </select>
+                        </div>
+
+                        <div class="col-6 form-group">
+                            <label for="grupo">Area</label>
+                            <select class="form-control" id="area" name="area">
+                                <option value="todos">Totas las areas</option>
+                                @foreach ($areas as $ar)
+                                <option value="{{$ar->codigo}}" @selected($filtros['area']==$ar->codigo)>{{$ar->descripcion}}</option>
+                                @endforeach
                             </select>
                         </div>
                     </div>
@@ -122,9 +131,11 @@
                                 <option value="todos">Todos los estados</option>
                                 <option value="abiertos" @selected($filtros['status']=='abiertos')>Abiertos (sin asignar + en proceso)</option>
                                 <option value="finalizados" @selected($filtros['status']=='finalizados')>Finalizados (resueltos + cerrados)</option>
+                                <option value="en_backlog" @selected($filtros['status']=='en_backlog')>En backlog</option>
                                 <option value="sin_asignar" @selected($filtros['status']=='sin_asignar')>Sin asignar</option>
                                 <option value="en_proceso" @selected($filtros['status']=='en_proceso')>En proceso</option>
                                 <option value="en_pausa" @selected($filtros['status']=='en_pausa')>En pausa</option>
+                                <option value="bloqueados" @selected($filtros['status']=='bloqueados')>Bloqueado</option>
                                 <option value="resueltos" @selected($filtros['status']=='resueltos')>Resuelto</option>
                                 <option value="cerrados" @selected($filtros['status']=='cerrados')>Cerrado</option>
                                 <option value="cancelados" @selected($filtros['status']=='cancelados')>Cancelado</option>
@@ -159,11 +170,11 @@
                 <div class="row m-0">
                     <button onclick="filtrar()" id="filtrar" class="col-auto btn btn-outline-success">Aplicar filtros</button>
                     <button onclick="eliminar_filtros()" id="elimiar_filtros" class="col-auto btn btn-outline-danger ml-3">Eliminar filtros</button>
-                    @if (Auth::user()->tipo==1)
+                    {{-- @if (Auth::user()->tipo==1)
                         <div class="col m-0 p-0 text-right">
                             <button onclick="mis_incidentes()" id="elimiar_filtros" class="btn btn-outline-slate ml-3">Mis tareas</button>
                         </div>
-                    @endif
+                    @endif --}}
                 </div>
             </div>
         </div>
@@ -180,7 +191,7 @@
         </form>
     
         @if ( isset($filtros['usuario']) || isset($filtros['cliente']) || isset($filtros['status']) 
-            || isset($filtros['modulo']) || isset($filtros['tipo_incidente']) 
+            || isset($filtros['modulo']) || isset($filtros['tipo_incidente']) || isset($filtros['area'])
             || isset($filtros['prioridad']) || isset($filtros['grupo']) )
             <button class="col-auto btn btn-filter-slate btn-sm pl-3 pr-3"
                 data-toggle="modal" data-target="#filtrarModal">
@@ -198,7 +209,7 @@
 
 
 
-    @if (count($data)>0)
+    @if ($data->count()>0)
 
         <table class="table ticketera">
             <thead>
@@ -300,7 +311,7 @@
                             <img src="{{ $value->inc_asignado->avatar }}" alt="">
                             <span class="text-secondary">{{ $value->inc_asignado->nombre }}</span>
                         @else
-                            <img src="{{ Storage::url('/public/profile/unassigned.png') }}" alt="">
+                            <img src="{{ Storage::url('/profile/unassigned.png') }}" alt="">
                             <span class="text-dimm">Sin asignar</span>
                         @endif
                         </a>
@@ -308,14 +319,16 @@
                     <td class="d-none d-md-table-cell text-center">
                         <a href="{{ route('incidentes.show', (int)$value->id) }}">
                         <i class="badge
-                        @if ($value->status==0) badge-orange
+                        @if ($value->periodo==="0") badge-pink
+                        @elseif ($value->status==0) badge-orange
                         @elseif ($value->status==5) badge-teal
+                        @elseif ($value->status==6) badge-red
                         @elseif ($value->status==10) badge-green
                         @elseif ($value->status==20) badge-gray
                         @elseif ($value->status==50) badge-lightgray
                         @else badge-blue
                         @endif
-                        ">{{ $value->status_desc }}</i>
+                        ">{{ $value->periodo==="0" ? 'en backlog' : $value->status_desc }}</i>
                         </a>
                     </td>
                 </tr>
@@ -333,7 +346,9 @@
         No se encontraron incidentes. 
     @endif
 
+    @if ($data->hasMorePages())
     {{ $data->appends(request()->query())->links(true) }}
+    @endif
 
 </div>
 
@@ -350,6 +365,7 @@
     function eliminar_filtros() {
         $('#cliente').val('todos');
         $('#grupo').val('todos');
+        $('#area').val('todas');
         $('#usuario').val('todos');
         $('#tipo_incidente').val('todos');
         $('#modulo').val('todos');
@@ -361,6 +377,7 @@
     function mis_incidentes() {
         $('#usuario').val('{{Auth::user()->Usuario}}');
         $('#cliente').val('todos');
+        $('#area').val('todas');
         $('#tipo_incidente').val('todos');
         $('#modulo').val('todos');
         $('#status').val('abiertos');
@@ -371,6 +388,7 @@
     function sinAsignar() {
         $('#usuario').val('todos');
         $('#cliente').val('todos');
+        $('#area').val('todas');
         $('#tipo_incidente').val('todos');
         $('#modulo').val('todos');
         $('#prioridad').val('todos');

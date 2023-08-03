@@ -20,7 +20,8 @@ Class Gate {
 
     private static function getResult($function, $param=null)
     {
-        $current_user = isset(self::$user)? self::$user : Auth::user();
+        return Authorize::verify($function, $param, false);
+        /* $current_user = isset(self::$user)? self::$user : Auth::user();
 
         if (!isset($current_user)) {
             return false;
@@ -46,7 +47,7 @@ Class Gate {
         if (isset($param))
             return $controller->$func($current_user, $param);
         else 
-            return $controller->$func($current_user);
+            return $controller->$func($current_user); */
         
     }
 
@@ -61,10 +62,26 @@ Class Gate {
         return !self::getResult($function, $param);
     }
 
+    public static function any($functions, $param=null)
+    {
+        $functions = is_array($functions)? $functions : array($functions);
+
+        foreach ($functions as $function) {
+            $res = self::getResult($function, $param);
+
+            if ($res) return true;
+        }
+
+        return false;
+    }
+
     public static function authorize($function, $param=null)
     {
-        if (!self::getResult($function, $param))
+        if (!self::getResult($function, $param)) {
             abort(403);
+        }
+
+        return true;
     }
 
     public static function forUser($user)

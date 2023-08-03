@@ -8,6 +8,8 @@ Route::redirect('/', 'incidentes');
 
 Route::middleware('auth')->group( function() {
 
+    Route::get('tareas', [IncidentesController::class, 'tareas'])->name('tareas');
+
     Route::resource('incidentes', IncidentesController::class)->except(['edit', 'delete']);
 
     Route::controller(IncidentesController::class)->group( function()
@@ -16,7 +18,6 @@ Route::middleware('auth')->group( function() {
         Route::get('incidentes/descargar/{incidente}/{avance}/{adjunto}', 'descargarAdjunto')->name('incidente.descargar.adjunto');
         Route::post('incidentes/{id}/avance', 'guardarAvance')->name('incidente.avance.guardar');
         Route::delete('incidentes/{id}/avance/{avance}', 'eliminarAvance')->name('incidente.avance.eliminar');
-        Route::get('test', 'test');
     });
 
     Route::controller(InformesController::class)->group( function()
@@ -28,18 +29,20 @@ Route::middleware('auth')->group( function() {
 
     Route::get('tablero/{param?}', [TableroController::class, 'tablero'])->name('dashboard');
 
+    Route::get('usuarios/{id}/perfil', [UsuariosController::class, 'perfilUsuario'])->name('usuarios.perfil');
+    Route::put('usuarios/{id}/perfil', [UsuariosController::class, 'modificarPerfil'])->name('usuarios.perfil.modificar');
+
 });
 
 Route::middleware(['auth', 'interno'])->group( function() {
 
+    Route::resource('periodos', PeriodoController::class);
+    Route::get('periodos/vencidos', [PeriodoController::class, 'incidentesVencidos'])->name('periodos.vencidos');
+    Route::get('periodos/{id}/{filtro}', [PeriodoController::class, 'filtrarIncidentes'])->name('periodos.filtrar');
+    Route::post('periodos/mover', [PeriodoController::class, 'moverIncidentes'])->name('periodos.mover');
+
     Route::resource('usuarios', UsuariosController::class)->except(['show']);
-    
-    Route::controller(UsuariosController::class)->group( function()
-    {
-        Route::get('usuarios/{id}/habilitar', 'habilitarUsuario')->name('usuarios.habilitar');
-        Route::get('usuarios/{id}/perfil', 'perfilUsuario')->name('usuarios.perfil');
-        Route::put('usuarios/{id}/perfil', 'modificarPerfil')->name('usuarios.perfil.modificar');
-    });
+    Route::get('usuarios/{id}/habilitar', [UsuariosController::class, 'habilitarUsuario'])->name('usuarios.habilitar');
     
     Route::resource('grupos', GruposController::class)->except(['show']);
 
@@ -80,6 +83,8 @@ Route::middleware(['auth', 'interno'])->group( function() {
         Route::get('herramientas', 'herramientas')->name('herramientas');
         Route::get('herramientas/resolver', 'resolver')->name('herramientas.resolver');
         Route::get('herramientas/cerrar', 'cerrar')->name('herramientas.cerrar');
+
+        Route::get('herramientas/buscar_incidente', 'buscarIncidente')->name('herramientas.buscar_incidente');
     });
 
 });

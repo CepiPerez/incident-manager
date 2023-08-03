@@ -20,8 +20,11 @@ class Blade
     {
         $cache = _DIR_.'storage/framework/views';
 
-        if (file_exists($cache.'/temp_view'))
-        {
+        if ( !file_exists($cache) ) { 
+            mkdir($cache); 
+        }
+
+        if (file_exists($cache.'/temp_view')) {
             unlink($cache.'/temp_view.blade.php');
         }
 
@@ -29,7 +32,9 @@ class Blade
 
         $blade = new BladeOne($cache, $cache);
 
-		return $blade->run('temp_view', $attributes);
+		$result = $blade->run('temp_view', $attributes);
+
+        return $result;
     }
 
     public static function _if($compiler, $callback)
@@ -39,8 +44,7 @@ class Blade
 
     public static function __findCompiler($compiler)
     {
-        if (isset(self::$compilers[$compiler]))
-        {
+        if (isset(self::$compilers[$compiler])) {
             return self::$compilers[$compiler];
         }
 
@@ -49,52 +53,47 @@ class Blade
 
     public static function __findTemplate($template)
     {
-        $dir = _DIR_.'resources/views/';
+        $dir = _DIR_ . 'resources/views/';
 
-        if (file_exists($dir . str_replace('.', '/', $template) . '.blade.php'))
-        { 
+        if (file_exists($dir . str_replace('.', '/', $template) . '.blade.php')) { 
             return array($dir, $template);
         }
 
-        if (file_exists($dir . str_replace('.', '/', $template) . '/index.blade.php'))
-        {
+        if (file_exists($dir . str_replace('.', '/', $template) . '/index.blade.php')) {
             return array($dir, $template.'.index');
         }
         
         $array = explode('.', $template);        
         $template = array_pop($array);
         $namespace = 'default';
-
         $dir = self::$paths[$namespace];
         
-        if (strpos($template, "::")!==false)
-        {
-            $namespace = reset(explode('::', $template));
-            $template = end(explode('::', $template));
+        if (strpos($template, "::")!==false) {
+            list($namespace, $template) = explode('::', $template);
         }
 
-        return array($dir, $template);
+        if (file_exists($dir . '/' . str_replace('.', '/', $template) . '.blade.php')) {
+            return array($dir, $template);
+        }
+
+        return null;
     }
 
     public static function __findComponent($component)
     {
         global $_class_list;
 
-        if (isset(self::$components[$component]))
-        {
+        if (isset(self::$components[$component])) {
             return self::$components[$component];
         }
 
         $result = ucfirst($component).'Component';
 
-        if (array_key_exists($result, $_class_list))
-        {
+        if (array_key_exists($result, $_class_list)) {
             return $result;
         }
 
         return '';
-
     }
-
 
 }

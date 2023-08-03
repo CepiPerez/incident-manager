@@ -4,7 +4,6 @@ class Stringable
 {
     protected $value;
 
-
     public function __construct($value = '')
     {
         $this->value = (string) $value;
@@ -13,16 +12,6 @@ class Stringable
     public function __toString(){
         return $this->value;
     }
-
-    /* public function __call($method, $arguments)
-    {
-        if (isset(Str::$_macros[$method]))
-        {
-            list($class, $method, $params) = getCallbackFromString(Str::$_macros[$method]);
-            return call_user_func_array(array($class, $method), $arguments? $arguments : $this->value);
-        }
-        return null;
-    } */
 
     public function value()
     {
@@ -55,15 +44,60 @@ class Stringable
         return null;
     }
 
+    public function isUrl()
+    {
+        return Str::isUrl($this->value);
+    }
+
+    public function isUuid()
+    {
+        return Str::isUuid($this->value);
+    }
+
+    public function isUlid()
+    {
+        return Str::isUlid($this->value);
+    }
+
     public function append($values)
     {
         $this->value .= $values;
         return $this;
     }
 
+    public function before($search)
+    {
+        $this->value = Str::before($this->value, $search);
+        return $this;
+    }
+
+    public function beforeLast($search)
+    {
+        $this->value = Str::beforeLast($this->value, $search);
+        return $this;
+    }
+    
+    public function between($from, $to)
+    {
+        $this->value = Str::between($this->value, $from, $to);
+        return $this;
+    }
+
+    public function betweenFirst($from, $to)
+    {
+        $this->value = Str::betweenFirst($this->value, $from, $to);
+        return $this;
+    }
+
     public function after($search)
     {
         $this->value = Str::after($this->value, $search);
+        return $this;
+    }
+
+    public function afterLast($search)
+    {
+        $this->value = Str::afterLast($this->value, $search);
         return $this;
     }
 
@@ -113,9 +147,9 @@ class Stringable
         return $this;
     }
 
-    public function replace($search, $replace)
+    public function replace($search, $replace, $caseSensitive = true)
     {
-        $this->value = str_replace($search, $replace, $this->value);
+        $this->value = Str::replace($search, $replace, $this->value, $caseSensitive);
         return $this;
     }
 
@@ -212,6 +246,24 @@ class Stringable
         return $this;
     }
 
+    public function trim($characters = null)
+    {
+        $trim = $characters? trim($this->value, $characters) : trim($this->value);
+        return new Stringable($trim);
+    }
+
+    public function ltrim($characters = null)
+    {
+        $trim = $characters? ltrim($this->value, $characters) : rtrim($this->value);
+        return new Stringable($trim);
+    }
+
+    public function rtrim($characters = null)
+    {
+        $trim = $characters? rtrim($this->value, $characters) : rtrim($this->value);
+        return new Stringable($trim);
+    }
+
     public function lcfirst()
     {
         $this->value = Str::lcfirst($this->value);
@@ -232,6 +284,27 @@ class Stringable
     public function wordCount()
     {
         return str_word_count($this->value);
+    }
+
+    public function mask($character, $index, $length = null)
+    {
+        return Str::mask($this->value, $character, $index, $length);
+    }
+
+    public function match($pattern)
+    {
+        $this->value = Str::match($pattern, $this->value);
+        return $this;
+    }
+
+    public function isMatch($pattern)
+    {
+        return Str::isMatch($pattern, $this->value);
+    }
+
+    public function matchAll($pattern)
+    {
+        return Str::matchAll($pattern, $this->value);
     }
 
 }

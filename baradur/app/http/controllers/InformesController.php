@@ -97,13 +97,13 @@ class InformesController extends Controller
 				status_incidentes.descripcion as status_desc, usuarios.nombre as usuario_desc,
 				grupos.descripcion as grupo_desc')
 			->whereBetween('fecha_ingreso', [$inicio, $fin])
-			->leftJoin('areas', 'codigo', '=', 'area')
-			->leftJoin('modulos', 'codigo', '=', 'modulo')
-			->leftJoin('clientes', 'codigo', '=', 'cliente')
-			->leftJoin('status_incidentes', 'codigo', '=', 'status')
-			->leftJoin('tipo_incidentes', 'codigo', '=', 'tipo_incidente')
-			->leftJoin('usuarios', 'Usuario', '=', 'usuario')
-			->leftJoin('grupos', 'codigo', '=', 'grupo');
+			->leftJoin('areas', 'areas.codigo', '=', 'incidentes.area')
+			->leftJoin('modulos', 'modulos.codigo', '=', 'incidentes.modulo')
+			->leftJoin('clientes', 'clientes.codigo', '=', 'incidentes.cliente')
+			->leftJoin('status_incidentes', 'status_incidentes.codigo', '=', 'incidentes.status')
+			->leftJoin('tipo_incidentes', 'tipo_incidentes.codigo', '=', 'incidentes.tipo_incidente')
+			->leftJoin('usuarios', 'usuarios.Usuario', '=', 'incidentes.usuario')
+			->leftJoin('grupos', 'grupos.codigo', '=', 'incidentes.grupo');
 
 		
 		if (isset($datos['grupo']))

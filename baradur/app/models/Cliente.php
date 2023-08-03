@@ -10,7 +10,7 @@ class Cliente extends Model
 
     public function scopeActivos($query)
     {
-        return $query->with('areas')->where('activo', 1)->orderBy('descripcion');
+        return $query->/* with('areas')-> */where('activo', 1)->orderBy('descripcion');
     }
 
     public function incidentes()

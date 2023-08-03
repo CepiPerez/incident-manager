@@ -17,12 +17,14 @@ class UsuariosController extends Controller
 
 		$usuarios = $usuarios->orderBy('Usuario')->paginate(20);
 
+		$permisos = Auth::user()->roles->permisos->pluck('id')->toArray();
+
 		foreach ($usuarios as $user)
 		{
 			$user->contador = $user->creados_count + $user->asignados_count + $user->remitente_count;
 		}
 
-		return view('admin.usuarios', compact('usuarios', 'buscar'));
+		return view('admin.usuarios', compact('usuarios', 'buscar', 'permisos'));
 	}
 
 	public function create()
@@ -49,7 +51,7 @@ class UsuariosController extends Controller
 		$usuario->Mail = $request->email;
 		$usuario->rol = $request->rol;
 		$usuario->tipo = $request->tipo;
-		$usuario->cliente = $request->tipo==0? $request->cliente : null;
+		$usuario->cliente = $request->tipo==0? $request->cliente : 0;
 		$usuario->activo = 1;
 		$usuario->status = 1;
 		$res = $usuario->save();
@@ -102,13 +104,14 @@ class UsuariosController extends Controller
 
 		if ($previo)
 		{
-			DB::query("UPDATE avances set usuario='$request->usuario' WHERE usuario='$previo'");
-			DB::query("UPDATE avances set destino='$request->usuario' WHERE destino='$previo'");
-			DB::query("UPDATE avances set asignado_prev='$request->usuario' WHERE asignado_prev='$previo'");
-			DB::query("UPDATE asignaciones set usuario='$request->usuario' WHERE usuario='$previo'");
-			DB::query("UPDATE incidentes set usuario='$request->usuario' WHERE usuario='$previo'");
-			DB::query("UPDATE incidentes set remitente='$request->usuario' WHERE remitente='$previo'");
-			DB::query("UPDATE incidentes set asignado='$request->usuario' WHERE asignado='$previo'");
+			DB::statement("UPDATE avances set usuario='$request->usuario' WHERE usuario='$previo'");
+			DB::statement("UPDATE avances set destino='$request->usuario' WHERE destino='$previo'");
+			DB::statement("UPDATE avances set asignado_prev='$request->usuario' WHERE asignado_prev='$previo'");
+			DB::statement("UPDATE asignaciones set usuario='$request->usuario' WHERE usuario='$previo'");
+			DB::statement("UPDATE incidentes set usuario='$request->usuario' WHERE usuario='$previo'");
+			DB::statement("UPDATE incidentes set remitente='$request->usuario' WHERE remitente='$previo'");
+			DB::statement("UPDATE incidentes set asignado='$request->usuario' WHERE asignado='$previo'");
+			DB::statement("UPDATE historial_periodos set asignado='$request->usuario' WHERE asignado='$previo'");
 		}
 
 		if ($res)
@@ -160,18 +163,18 @@ class UsuariosController extends Controller
 
 		$request->validate([
 			'nombre' => 'required|max:50',
-			'clave' => 'required|max:10'
+			/* 'clave' => 'required|max:10' */
 		]);
 
-		dd($request->all());
-		dd($request->validated()); exit();
+		//dd($request->all());
+		//dd($request->validated()); exit();
 		
 		$usuario->nombre = $request->nombre;
 		$usuario->Mail = $request->email;
 		$usuario->Password = $request->clave? $request->clave : $usuario->Password;
 		$res = $usuario->save();
 
-		if ($request->file('avatar')->isValid())
+		if ($request->file('avatar'))
 		{
 			if (Storage::exists('profile/'.$id.'.png'))
 				Storage::delete('profile/'.$id.'.png');

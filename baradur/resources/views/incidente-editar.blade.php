@@ -9,7 +9,7 @@
       <h3 class="col pt-2">
         Incidente {{ str_pad($data->id, 7, '0', STR_PAD_LEFT) }}
       </h3>
-        @if ($data->status<10 && $data->status!=5 && Auth::user()->tipo==1)
+        @if ($data->status<10 && $data->status!=5 && $data->status!=6 && Auth::user()->tipo==1 && $data->periodo!=="0")
           <p class="col-auto text-secondary" style="height:2rem;padding-top:16px;padding-right:1.25rem;">
             @php $s = Utils::sla_expiration($data->horas, $data->sla); @endphp
             @if ($s['expired']) 
@@ -126,7 +126,7 @@
           <div class="bg-slate pt-3 pr-3 pl-3 pb-1">
 
             <!-- Avances del incidente -->
-            @if (count($data->avances)>0)
+            @if ($data->avances->count()>0)
             @foreach ($data->avances as $value)
               @if (Auth::user()->tipo==1 || $value->visible==1)
               <div class="card card-body m-0 pt-1 pl-1 pr-1 pb-0 mb-2
@@ -177,7 +177,7 @@
 
                       @if ($value->descripcion)
                         <div class="row text-small ml-0 mr-2 mb-2">
-                          <p class="pl-2 pr-2 m-0 pt-0 text-secondary">{{ htmlentities($value->descripcion) }}</p>
+                          <p class="pl-2 pr-2 m-0 pt-0 text-secondary">{{ $value->descripcion }}</p>
                         </div>
                       @endif
 
@@ -202,7 +202,8 @@
                         </div>
                       @endif
 
-                      @if (($value->usuario==Auth::user()->Usuario || Auth::user()->rol==1) && $data->status<20)
+                      @if (($value->usuario==Auth::user()->Usuario || Auth::user()->rol==1) 
+                        && $data->status<20 && $loop->index==$data->avances->count())
                         <div class="col text-right text-small m-0 p-0 mb-2 pr-2 pb-1">
                           <div class="col-auto text-right p-0 pl-0 m-0 mb-0 text-dark"> 
                             <a href="#" onclick="eliminarAvance('{{route('incidente.avance.eliminar', $data->id, $value->id) }}')"
@@ -225,16 +226,24 @@
               <p>No hay avances registrados</p>
             @endif
 
+            {{-- @if ($data->status!=6) --}}
             <div class="botonera p-0 m-0 mt-3">
-              @if(Auth::user()->tipo==1 && $data->status<20)
-                <span class="col-auto btn btn-plain btn-sm orange mb-2 p-0 mr-3" 
-                  {{-- data-toggle="modal" data-target="#agregarNota" --}} onclick="agregarNota()">
-                  <i class="ri-add-line mr-2 m-0 p-0" style="vertical-align:middle;"></i>Agregar nota privada
-                </span>
-                <span class="col-auto btn btn-plain btn-sm slate mb-2 p-0 ml-1" 
-                  {{-- data-toggle="modal" data-target="#agregarAvance" --}} onclick="agregarAvance()">
-                  <i class="ri-add-line mr-2 m-0 p-0" style="vertical-align:middle;"></i>Agregar avance
-                </span>
+              @if(Auth::user()->tipo==1 && $data->status<20 && Auth::user()->grupos->count()>0)
+                @if (!$vencido)
+                  <span class="col-auto btn btn-plain btn-sm orange mb-2 p-0 mr-3" 
+                    {{-- data-toggle="modal" data-target="#agregarNota" --}} onclick="agregarNota()">
+                    <i class="ri-add-line mr-2 m-0 p-0" style="vertical-align:middle;"></i>Agregar nota privada
+                  </span>
+                  <span class="col-auto btn btn-plain btn-sm slate mb-2 p-0 ml-1" 
+                    {{-- data-toggle="modal" data-target="#agregarAvance" --}} onclick="agregarAvance()">
+                    <i class="ri-add-line mr-2 m-0 p-0" style="vertical-align:middle;"></i>Agregar avance
+                  </span>
+                @else
+                  <span class="col-auto btn btn-plain btn-sm gray mb-2 p-0 ml-1" style="pointer-events: none">
+                    <i class="ri-error-warning-line mr-2 m-0 p-0" style="vertical-align:middle;"></i>
+                    Sprint cerrado. No se pueden agregar avances
+                  </span>
+                @endif
               @elseif (Auth::user()->tipo==0 && $data->status<10)
                 <span class="col-auto btn btn-plain btn-sm slate mb-2 p-0 ml-1" 
                   {{-- data-toggle="modal" data-target="#agregarNota"> --}} onclick="agregarNotaUser()">
@@ -242,6 +251,7 @@
                 </span>
               @endif
             </div>
+            {{-- @endif --}}
 
           </div>
 
@@ -260,7 +270,7 @@
               <label for="cliente">Creado</label>
               <input class="col form-control" type="text" id="fecha" 
                 @if(Auth::user()->tipo==0 || $data->status>=20) disabled @endif
-                name="fecha" autocomplete="false" value="{{ $data->fecha_ingreso->rawFormat('d-m-Y H:i') }}"
+                name="fecha_ingreso" autocomplete="false" value="{{ $data->fecha_ingreso->rawFormat('d-m-Y H:i') }}"
                 style="max-width:130px;">
             </div>
             {{-- @if ($data->remitente != $data->usuario)
@@ -279,13 +289,9 @@
                 </span>
                 @else
                   <select id="remitente" name="remitente" class="form-control remitente"  
-                  @if(Auth::user()->tipo==0 || $data->status>=20) disabled @endif>
-                  @foreach ($remitentes as $rte)
-                    <option value="{{$rte['Usuario']}}" @selected($data->remitente==$rte['Usuario'])>
-                        {{$rte['nombre']}}</option>
-                  @endforeach
+                    @if(Auth::user()->tipo==0 || $data->status>=20) disabled @endif>
+                  </select>
                 @endif
-              </select>
               </div>
             </div>
 
@@ -295,13 +301,15 @@
 
             <div class="col-6 col-lg-12 form-group pt-2 pl-0">
               <label for="cliente">Estado</label><br>
-              <i class="badge @if ($data->status==0) badge-orange
+              <i class="badge @if ($data->periodo==="0") badge-pink
+                  @elseif ($data->status==0) badge-orange
                   @elseif ($data->status==5) badge-teal
+                  @elseif ($data->status==6) badge-red
                   @elseif ($data->status==10) badge-green
                   @elseif ($data->status==20) badge-gray
                   @elseif ($data->status==50) badge-lightgray
                   @else badge-blue
-                  @endif">{{ $data->estado->descripcion }}</i>
+                  @endif">{{ $data->periodo==="0" ? 'En Backlog' : $data->estado->descripcion }}</i>
             </div>
 
             <div class="col-6 col-lg-12 form-group pt-2 pl-0 pl-md-2 pl-lg-0">
@@ -340,6 +348,31 @@
               <img src="{{asset('assets/icons/'.$data->pid.'.svg')}}" alt="" class="priority mr-2">
               <span style="font-size: 1.1rem;">{{$data->pdesc}}</span>
             </div>
+
+            @if(Auth::user()->tipo==1)
+            <div class="col-6 col-lg-12 form-group pt-2 pl-0 pl-md-2 pl-lg-0">
+              <label for="periodo">Sprint asignado</label>
+              <br>
+              <select id="periodo" name="periodo" class="form-control remitente"
+                @canany(['admin_tareas', 'inc_backlog']) enabled @else disabled @endcanany>
+                <option value="" @selected(is_null($data->periodo))>Sin asignar</option>
+                <option value="0" @selected(is_numeric($data->periodo) && $data->periodo==="0")>Backlog</option>
+                @foreach ($periodos as $per)
+                  <option value="{{$per->codigo}}" @selected($data->periodo==$per->codigo)>{{$per->descripcion}}</option>
+                @endforeach
+              </select>
+            </div>
+
+
+            {{-- <div class="col-6 col-lg-12 form-group pt-2 pl-0 pl-md-2 pl-lg-0">
+              <label for="dependencia">Dependencia</label>
+              <br>
+              <select id="dependencia" name="dependencia" class="form-control">
+                <option value="" @selected($data->dependencia==null)>Sin dependencia</option>
+              </select>
+            </div> --}}
+
+            @endif
 
           </div>
           
@@ -397,8 +430,9 @@
                     <label for="tipo_avance">Tipo de avance</label>
                     <select class="form-control" id="tipo_avance" name="tipo_avance">
                         @foreach ($tipo_avance as $ava)
+                          <!-- Ocultamos los avances de Notas -->
                           @if ($ava->codigo!=30 && $ava->codigo!=100)
-                          <option value="{{$ava->codigo}}">{{$ava->descripcion}}</option>
+                            <option value="{{$ava->codigo}}">{{$ava->descripcion}}</option>
                           @endif
                         @endforeach
                     </select>
@@ -421,29 +455,45 @@
                         </select>
                       </div> 
                       <div class="form-group">
-                      <label for="usuario">Usuario asignado</label>
-                      <select class="form-control" id="usuario" name="usuario">
-                          {{-- @foreach ($usuarios as $u)
-                          <option value="{{$u->Usuario}}" @selected($data->asignado? $data->asignado==$u->Usuario : Auth::user()->Usuario==$u->Usuario)>{{$u->nombre}}</option>
-                          @endforeach --}}
-                      </select>
+                        <label for="usuario">Usuario asignado</label>
+                        <select class="form-control" id="usuario" name="usuario">
+                            {{-- @foreach ($usuarios as $u)
+                            <option value="{{$u->Usuario}}" @selected($data->asignado? $data->asignado==$u->Usuario : Auth::user()->Usuario==$u->Usuario)>{{$u->nombre}}</option>
+                            @endforeach --}}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div class="form-group col-auto p-0" id="fechaAvance" hidden>
+                      <label for="fecha_avance">Fecha</label>
+                      <input class="form-control" type="text" id="fecha_avance" 
+                        name="fecha_avance" autocomplete="false" value="{{ date('d-m-Y H:i') }}"
+                        style="max-width:130px;">
+                    </div>
+
+                    <div class="form-group" id="av_estimado" hidden>
+                      <label for="tiempo_estimado">Tiempo estimado</label>
+                      <div class="row">
+                        <div class="col-6">
+                          <input type="number" name="tiempo_estimado" id="tiempo_estimado" value="1" min="1" max="999"
+                            class="form-control @error('tiempo_estimado') is-invalid @enderror">
+                        </div>
+                        <div class="col-6">
+                          <select class="form-control" id="tiempo_estimado_tipo" name="tiempo_estimado_tipo">
+                            <option value="horas">horas</option>
+                            <option value="dias">días</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
                     
-                    <div class="form-group">
+                    <div class="form-group" id="av_desc_group">
                       <label for="descripcion">Descripcion</label>
                       <textarea type="text" name="descripcion" id="av_descripcion" class="form-control @error('descripcion') is-invalid @enderror"
                         rows="3"></textarea>
                     </div>
-
-                    {{-- <div class="form-group">
-                      <label>Adjuntar archivo</label><br>
-                      <div class="custom-file">
-                        <input type="file" class="custom-file-input" id="customFileLang" name="archivo">
-                        <label class="custom-file-label" data-browse="Seleccionar" for="customFileLang">Seleccionar Archivo</label>
-                      </div>
-                    </div> --}}
-                    <div class="form-group">
+                    
+                    <div class="form-group" id="av_adjuntos">
                       <label>Archivos adjuntos</label>
                       <div class="attachemnts-card p-2">
                         <button class="btn btn-sm btn-plain slate upload-btn ml-1" type="button">
@@ -478,6 +528,9 @@
 
 <link href="{{ asset('assets/css/imageupload.css') }}" rel="stylesheet" />
 <script src="{{ asset('assets/js/imageupload.js') }}"></script>
+
+<link href="{{ asset('assets/css/select2.min.css') }}" rel="stylesheet" />
+<script src="{{ asset('assets/js/select2.min.js') }}"></script>
 
 <script>
 
@@ -559,16 +612,13 @@
   }) */
 
   $('#tipo_avance').on('change',function() {
-      if($(this).val() >= 20)
-        $('#nota_danger').attr('hidden', false);
-      else
-        $('#nota_danger').attr('hidden', true);
-
-      if($(this).val()==2)
-        $('#asignacion').attr('hidden', false);
-      else
-        $('#asignacion').attr('hidden', true);
-
+      
+      $('#nota_danger').attr('hidden', $(this).val()<20);
+      $('#asignacion').attr('hidden', $(this).val()!=2);
+      $('#fechaAvance').attr('hidden', $(this).val()!=10);
+      $('#av_estimado').attr('hidden', $(this).val()!=8);
+      $('#av_desc_group').attr('hidden', $(this).val()==8);
+      $('#av_adjuntos').attr('hidden', $(this).val()==8);
 
   })
 
@@ -617,7 +667,6 @@
   $(document).ready(function(e)
   {
 
-
     auto_grow(document.getElementById('inc_desc'));
 
     window.addEventListener('resize', function(event){
@@ -628,8 +677,16 @@
       format:'d-m-Y H:i',
       formatTime:'H:i',
       formatDate:'d-m-Y',
+      lang: 'es',
       step: 10
+    });
 
+    $('#fecha_avance').datetimepicker({
+      format:'d-m-Y H:i',
+      formatTime:'H:i',
+      formatDate:'d-m-Y',
+      lang: 'es',
+      step: 10
     });
 
     var obj = <?php echo json_encode($cliente); ?>;
@@ -643,7 +700,7 @@
 
     var area_actual = {{ $data->area }};
     var rte_actual = '{{ $data->remitente }}';
-    //console.log("AREA: "+area_actual);
+
 
     $('#cliente').on('change', function ()
     {
@@ -675,8 +732,9 @@
           {
             var div = document.createElement('option');
             div.setAttribute('value', a.Usuario);
-            if (a.Usuario==rte_actual)
+            if (a.Usuario==rte_actual) {
               div.setAttribute('selected', true);
+            }
             div.innerHTML = a.nombre;
             document.getElementById("remitente").appendChild(div);
           });
@@ -726,7 +784,31 @@
     });
 
     $('#grupo').change();
+    $('#tipo_avance').change();
+
+    /* $('#dependencia').select2({
+      language: { noResults: () => 'No se encontró el incidente', searching: () => 'Buscando incidente...' },
+      placeholder: 'Ingrese el incidente',
+      ajax: {
+        url: '{{config("app.url")}}/herramientas/buscar_incidente/',
+        dataType: 'json',
+        data: function (params) {
+          var query = {
+            search: params.term,
+            incident: {{$data->id}}
+          }
+          return query;
+        },
+        processResults: function(data) {
+          return {
+            results: data
+          };
+        }
+      }
+    }); */
     
+
+
   });
 
 </script>

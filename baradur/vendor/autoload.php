@@ -4,6 +4,6 @@
 
 return array(
 
-    'PHPExcel' => 'PHPExcel/Classes/PHPExcel.php'
+    'PHPExcel' => 'vendor/PHPExcel/Classes/PHPExcel.php'
     
 );

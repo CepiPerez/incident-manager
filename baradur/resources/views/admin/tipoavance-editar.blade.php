@@ -73,7 +73,8 @@
         .replace('$REPRESENTANTE', 'Usuario Cualquiera')
         .replace('$DESTINO', 'Usuario Cualquiera')
         .replace('$DESCRIPCION', 'Detalle de la actualización: <br><b>Descripcion de ejemplo de avance del caso</b><br>')
-        .replace('$LINK', '/app/incidentes/123/editar');
+        .replace('$LINK', '/app/incidentes/123/editar')
+        .replace('$LOGO', '{{asset('assets/logonewrol.png')}}');
 
       $('#previa').html(text);
       $('#previa').attr('hidden', false);

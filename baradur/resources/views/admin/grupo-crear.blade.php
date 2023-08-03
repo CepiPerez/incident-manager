@@ -20,6 +20,11 @@
           <input class="form-control" id="descripcion" name="descripcion" value="{{ $old->descripcion }}" autofocus>
         </div>
 
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" class="form-control" id="email" name="email" value="{{ $old->email }}">
+        </div>
+
         <h5 class="pt-2">Miembros</h5>
         <hr class="mb-3 mt-0">
         <div id="listado" class="bg-slate p-3 mb-0">

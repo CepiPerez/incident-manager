@@ -8,7 +8,7 @@ class ClientesController extends Controller
 
 		$clientes = Cliente::selectRaw('clientes.*, tipo_servicios.descripcion as servicio')
 			->withCount('incidentes')
-			->leftJoin('tipo_servicios', 'codigo', '=', 'tipo_servicio')
+			->leftJoin('tipo_servicios', 'tipo_servicios.codigo', '=', 'clientes.tipo_servicio')
 			->orderBy('descripcion')
 			->paginate(20);
 

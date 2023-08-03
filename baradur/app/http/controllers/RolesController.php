@@ -39,7 +39,8 @@ class RolesController extends Controller
 			{
 				$permisos[] = $val;
 			}
-			if ($request->permisosadm)
+
+			if ($request->tipo==1 && $request->permisosadm)
 			{
 				foreach ($request->permisosadm as $key => $val)
 				{
@@ -90,7 +91,7 @@ class RolesController extends Controller
 				$permisos[] = $val;
 			}
 
-			if ($request->permisosadm)
+			if ($request->tipo==1 && $request->permisosadm)
 			{
 				foreach ($request->permisosadm as $key => $val)
 				{
@@ -101,6 +102,7 @@ class RolesController extends Controller
 				}
 			}
 		}
+
 
 		$rol->permisos()->sync($permisos);
 
